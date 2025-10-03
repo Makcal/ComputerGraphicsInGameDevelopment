@@ -7,13 +7,11 @@ int main(int argc, char** argv)
 {
 	try
 	{
-		auto settings = cg::settings::parse_settings(argc, argv);
-		auto renderer = cg::renderer::make_renderer(settings);
+		std::shared_ptr<cg::settings> settings = cg::settings::parse_settings(argc, argv);
+		std::shared_ptr<cg::renderer::renderer> renderer = cg::renderer::make_renderer(settings);
 
 		renderer->init();
-
 		renderer->render();
-
 		renderer->destroy();
 	}
 	catch (std::exception& e)
