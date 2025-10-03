@@ -2,93 +2,91 @@
 
 #include "resource.h"
 
-#include <functional>
-#include <iostream>
+#include <cstddef>
 #include <linalg.h>
+
+#include <functional>
 #include <limits>
 #include <memory>
+#include <utility>
 
+namespace cg::renderer
+{
+	using namespace linalg::aliases;
 
-using namespace linalg::aliases;
+	static constexpr float DEFAULT_DEPTH = std::numeric_limits<float>::max();
 
-static constexpr float DEFAULT_DEPTH = std::numeric_limits<float>::max();
+	template<typename VertexBufferElement, typename RenderTargetElement>
+	class rasterizer
+	{
+	public:
+		rasterizer(std::size_t width, std::size_t height,
+				   std::shared_ptr<resource<RenderTargetElement>> in_render_target,
+				   std::shared_ptr<resource<float>> in_depth_buffer);
+
+		void clear_render_target(const RenderTargetElement& in_clear_value, float in_depth = DEFAULT_DEPTH);
+
+		void set_vertex_buffer(std::shared_ptr<resource<VertexBufferElement>> in_vertex_buffer);
+		void set_index_buffer(std::shared_ptr<resource<unsigned int>> in_index_buffer);
+
+		void draw(std::size_t num_vertexes, std::size_t vertex_offset);
+
+	protected:
+		// NOLINTBEGIN(*-non-private-*)
+		std::shared_ptr<cg::resource<VertexBufferElement>> vertex_buffer;
+		std::shared_ptr<cg::resource<unsigned int>> index_buffer;
+		std::shared_ptr<cg::resource<RenderTargetElement>> render_target;
+		std::shared_ptr<cg::resource<float>> depth_buffer;
+
+		std::size_t width;
+		std::size_t height;
+
+		std::function<std::pair<float4, VertexBufferElement>(float4 vertex, VertexBufferElement vertex_data)>
+				vertex_shader;
+		std::function<cg::color(const VertexBufferElement& vertex_data, const float z)> pixel_shader;
+		// NOLINTEND(*-non-private-*)
+
+		int edge_function(int2 a, int2 b, int2 c);
+		bool depth_test(float z, std::size_t x, std::size_t y);
+	};
+}// namespace cg::renderer
 
 namespace cg::renderer
 {
 	template<typename VB, typename RT>
-	class rasterizer
+	rasterizer<VB, RT>::rasterizer(std::size_t width, std::size_t height,
+								   std::shared_ptr<resource<RT>> in_render_target,
+								   std::shared_ptr<resource<float>> in_depth_buffer)
+		: width{width}, height{height}, render_target{std::move(in_render_target)},
+		  depth_buffer{std::move(in_depth_buffer)}
 	{
-	public:
-		rasterizer(){};
-		~rasterizer(){};
-		void set_render_target(
-				std::shared_ptr<resource<RT>> in_render_target,
-				std::shared_ptr<resource<float>> in_depth_buffer = nullptr);
-		void clear_render_target(
-				const RT& in_clear_value, const float in_depth = DEFAULT_DEPTH);
-
-		void set_vertex_buffer(std::shared_ptr<resource<VB>> in_vertex_buffer);
-		void set_index_buffer(std::shared_ptr<resource<unsigned int>> in_index_buffer);
-
-		void set_viewport(size_t in_width, size_t in_height);
-
-		void draw(size_t num_vertexes, size_t vertex_offset);
-
-		std::function<std::pair<float4, VB>(float4 vertex, VB vertex_data)> vertex_shader;
-		std::function<cg::color(const VB& vertex_data, const float z)> pixel_shader;
-
-	protected:
-		std::shared_ptr<cg::resource<VB>> vertex_buffer;
-		std::shared_ptr<cg::resource<unsigned int>> index_buffer;
-		std::shared_ptr<cg::resource<RT>> render_target;
-		std::shared_ptr<cg::resource<float>> depth_buffer;
-
-		size_t width = 1920;
-		size_t height = 1080;
-
-		int edge_function(int2 a, int2 b, int2 c);
-		bool depth_test(float z, size_t x, size_t y);
-	};
-
-	template<typename VB, typename RT>
-	inline void rasterizer<VB, RT>::set_render_target(
-			std::shared_ptr<resource<RT>> in_render_target,
-			std::shared_ptr<resource<float>> in_depth_buffer)
-	{
-		// TODO Lab: 1.02 Implement `set_render_target`, `set_viewport`, `clear_render_target` methods of `cg::renderer::rasterizer` class
 		// TODO Lab: 1.06 Adjust `set_render_target`, and `clear_render_target` methods of `cg::renderer::rasterizer` class to consume a depth buffer
 	}
 
 	template<typename VB, typename RT>
-	inline void rasterizer<VB, RT>::set_viewport(size_t in_width, size_t in_height)
+	void rasterizer<VB, RT>::clear_render_target(const RT& in_clear_value, const float /*in_depth*/)
 	{
-		// TODO Lab: 1.02 Implement `set_render_target`, `set_viewport`, `clear_render_target` methods of `cg::renderer::rasterizer` class
-	}
-
-	template<typename VB, typename RT>
-	inline void rasterizer<VB, RT>::clear_render_target(
-			const RT& in_clear_value, const float in_depth)
-	{
-		// TODO Lab: 1.02 Implement `set_render_target`, `set_viewport`, `clear_render_target` methods of `cg::renderer::rasterizer` class
+		for (std::size_t i = 0; i < render_target->count(); ++i) {
+			render_target->item(i) = in_clear_value;
+			// depth_buffer->item(i) = in_depth;
+		}
 		// TODO Lab: 1.06 Adjust `set_render_target`, and `clear_render_target` methods of `cg::renderer::rasterizer` class to consume a depth buffer
 	}
 
 	template<typename VB, typename RT>
-	inline void rasterizer<VB, RT>::set_vertex_buffer(
-			std::shared_ptr<resource<VB>> in_vertex_buffer)
+	void rasterizer<VB, RT>::set_vertex_buffer(std::shared_ptr<resource<VB>> in_vertex_buffer)
 	{
 		vertex_buffer = in_vertex_buffer;
 	}
 
 	template<typename VB, typename RT>
-	inline void rasterizer<VB, RT>::set_index_buffer(
-			std::shared_ptr<resource<unsigned int>> in_index_buffer)
+	void rasterizer<VB, RT>::set_index_buffer(std::shared_ptr<resource<unsigned int>> in_index_buffer)
 	{
-		index_buffer = in_index_buffer;
+		index_buffer = std::move(in_index_buffer);
 	}
 
 	template<typename VB, typename RT>
-	inline void rasterizer<VB, RT>::draw(size_t num_vertexes, size_t vertex_offset)
+	void rasterizer<VB, RT>::draw(std::size_t num_vertexes, std::size_t vertex_offset)
 	{
 		// TODO Lab: 1.04 Implement `cg::world::camera` class
 		// TODO Lab: 1.05 Add `Rasterization` and `Pixel shader` stages to `draw` method of `cg::renderer::rasterizer`
@@ -96,20 +94,16 @@ namespace cg::renderer
 	}
 
 	template<typename VB, typename RT>
-	inline int
-	rasterizer<VB, RT>::edge_function(int2 a, int2 b, int2 c)
+	int rasterizer<VB, RT>::edge_function(int2 /*a*/, int2 /*b*/, int2 /*c*/)
 	{
 		// TODO Lab: 1.05 Implement `cg::renderer::rasterizer::edge_function` method
 		return 0;
 	}
 
 	template<typename VB, typename RT>
-	inline bool rasterizer<VB, RT>::depth_test(float z, size_t x, size_t y)
+	bool rasterizer<VB, RT>::depth_test(float z, std::size_t x, std::size_t y)
 	{
-		if (!depth_buffer)
-		{
-			return true;
-		}
+		if (!depth_buffer) return true;
 		return depth_buffer->item(x, y) > z;
 	}
 

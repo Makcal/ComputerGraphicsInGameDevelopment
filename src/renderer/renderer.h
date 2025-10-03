@@ -4,13 +4,13 @@
 #include "world/camera.h"
 #include "world/model.h"
 
-
 namespace cg::renderer
 {
-	class renderer
+	class renderer// NOLINT(*special-member*)
 	{
 	public:
-		void set_settings(std::shared_ptr<cg::settings> in_settings);
+		explicit renderer(std::shared_ptr<cg::settings> settings);
+		virtual ~renderer() = default;
 
 		unsigned get_height();
 		unsigned get_width();
@@ -21,17 +21,19 @@ namespace cg::renderer
 		virtual void update() = 0;
 		virtual void render() = 0;
 
-		void move_forward(float delta = 0.01f);
-		void move_backward(float delta = 0.01f);
-		void move_left(float delta = 0.01f);
-		void move_right(float delta = 0.01f);
-		void move_yaw(float delta = 0.f);
-		void move_pitch(float delta = 0.f);
+		static constexpr float kMovePrecision = 0.01F;
+		void move_forward(float delta = kMovePrecision);
+		void move_backward(float delta = kMovePrecision);
+		void move_left(float delta = kMovePrecision);
+		void move_right(float delta = kMovePrecision);
+		void move_yaw(float delta = 0.F);
+		void move_pitch(float delta = 0.F);
 
 		void load_model();
 		void load_camera();
 
 	protected:
+		// NOLINTBEGIN(*-non-private-*)
 		std::shared_ptr<cg::settings> settings;
 
 		std::shared_ptr<cg::world::camera> camera;
@@ -39,9 +41,9 @@ namespace cg::renderer
 
 		std::chrono::time_point<std::chrono::high_resolution_clock> current_time =
 				std::chrono::high_resolution_clock::now();
-		float frame_duration = 0.f;
+		float frame_duration = 0.F;
+		// NOLINTEND(*-non-private-*)
 	};
 
-
-	extern std::shared_ptr<renderer> make_renderer(std::shared_ptr<cg::settings> settings);
+	std::shared_ptr<renderer> make_renderer(std::shared_ptr<cg::settings> settings);
 }// namespace cg::renderer
