@@ -16,11 +16,10 @@ renderer::rasterization_renderer::rasterization_renderer(std::shared_ptr<cg::set
 
 void renderer::rasterization_renderer::init() {
     render_target = std::make_shared<resource<unsigned_color>>(settings->width, settings->height);
-    // depth_buffer = std::make_shared<resource<float>>(settings->width,
-    // settings->height);
+    depth_buffer = std::make_shared<resource<float>>(settings->width, settings->height);
 
     rasterizer = std::make_shared<cg::renderer::rasterizer<vertex, unsigned_color>>(
-        settings->width, settings->height, render_target, nullptr);
+        settings->width, settings->height, render_target, depth_buffer);
 
     renderer::load_model();
     renderer::load_camera();
@@ -32,10 +31,8 @@ void renderer::rasterization_renderer::init() {
         return std::make_pair(transformed, vertex_data);
     });
 
-    rasterizer->set_pixel_shader([](const vertex& vertex_data, float  /*z*/) {
-        return color::from_float3(vertex_data.ambient);
-    });
-    // TODO Lab: 1.06 Add depth buffer in `cg::renderer::rasterization_renderer`
+    rasterizer->set_pixel_shader(
+        [](const vertex& vertex_data, float /*z*/) { return color::from_float3(vertex_data.ambient); });
 }
 
 void cg::renderer::rasterization_renderer::render() {

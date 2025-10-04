@@ -2,7 +2,6 @@
 
 #include "resource.h"
 
-#include <iostream>
 #include <linalg.h>
 
 #include <algorithm>
@@ -62,19 +61,14 @@ rasterizer<VB, RT>::rasterizer(std::size_t width,
                                std::shared_ptr<resource<RT>> in_render_target,
                                std::shared_ptr<resource<float>> in_depth_buffer)
     : width{width}, height{height}, render_target{std::move(in_render_target)},
-      depth_buffer{std::move(in_depth_buffer)} {
-    // TODO Lab: 1.06 Adjust `set_render_target`, and `clear_render_target` methods of `cg::renderer::rasterizer` class
-    // to consume a depth buffer
-}
+      depth_buffer{std::move(in_depth_buffer)} {}
 
 template <typename VB, typename RT>
-void rasterizer<VB, RT>::clear_render_target(const RT& in_clear_value, const float /*in_depth*/) {
+void rasterizer<VB, RT>::clear_render_target(const RT& in_clear_value, const float in_depth) {
     for (std::size_t i = 0; i < render_target->count(); ++i) {
         render_target->item(i) = in_clear_value;
-        // depth_buffer->item(i) = in_depth;
+        depth_buffer->item(i) = in_depth;
     }
-    // TODO Lab: 1.06 Adjust `set_render_target`, and `clear_render_target` methods of `cg::renderer::rasterizer` class
-    // to consume a depth buffer
 }
 
 template <typename VB, typename RT>
@@ -115,26 +109,30 @@ void rasterizer<VB, RT>::draw(std::size_t num_vertices, std::size_t vertex_offse
         int2 min_border{0, 0};
         int2 max_border{static_cast<int>(width), static_cast<int>(height)};
 
-        int2 min_vertex = std::min(vertex_a, std::min(vertex_b, vertex_c));
-        min_vertex = std::clamp(min_vertex, min_border, max_border);
-        int2 max_vertex = std::max(vertex_a, std::max(vertex_b, vertex_c));
-        max_vertex = std::clamp(max_vertex, min_border, max_border);
+        int2 min_vertex = linalg::min(vertex_a, linalg::min(vertex_b, vertex_c));
+        min_vertex = linalg::clamp(min_vertex, min_border, max_border);
+        int2 max_vertex = linalg::max(vertex_a, linalg::max(vertex_b, vertex_c));
+        max_vertex = linalg::clamp(max_vertex, min_border, max_border);
+
+        float edge = edge_function(vertex_a, vertex_b, vertex_c);
 
         for (int x = min_vertex.x; x < max_vertex.x; ++x) {
             for (int y = min_vertex.y; y < max_vertex.y; ++y) {
                 int2 point{x, y};
-                int edge1 = edge_function(vertex_a, vertex_b, point);
-                int edge2 = edge_function(vertex_b, vertex_c, point);
-                int edge3 = edge_function(vertex_c, vertex_a, point);
-                if (edge1 >= 0 && edge2 >= 0 && edge3 >= 0) {
-                    float depth = 1;
-                    color result = pixel_shader(vertices[0], depth);
-                    render_target->item(x, y) = RT::from_color(result);
+                float u = static_cast<float>(edge_function(vertex_b, vertex_c, point)) / edge;
+                float v = static_cast<float>(edge_function(vertex_c, vertex_a, point)) / edge;
+                float w = static_cast<float>(edge_function(vertex_a, vertex_b, point)) / edge;
+                if (u >= 0 && v >= 0 && w >= 0) {
+                    float depth = (u * vertices[0].v.z) + (v * vertices[1].v.z) + (w * vertices[2].v.z);
+                    if (depth_test(depth, x, y)) {
+                        color result = pixel_shader(vertices[1], depth);
+                        render_target->item(x, y) = RT::from_color(result);
+                        depth_buffer->item(x, y) = depth;
+                    }
                 }
             }
         }
     }
-    // TODO Lab: 1.06 Add `Depth test` stage to `draw` method of `cg::renderer::rasterizer`
 }
 
 template <typename VB, typename RT>
