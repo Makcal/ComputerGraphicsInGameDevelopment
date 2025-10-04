@@ -36,7 +36,7 @@ void renderer::rasterization_renderer::init() {
 }
 
 void cg::renderer::rasterization_renderer::render() {
-    static constexpr unsigned_color color = {.r = 153, .g = 255, .b = 204};
+    static constexpr unsigned_color color = {153, 255, 204};
     {
         utils::timer timer{"render"};
         rasterizer->clear_render_target(color);
