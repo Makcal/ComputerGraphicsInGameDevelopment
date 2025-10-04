@@ -7,7 +7,7 @@
 
 using namespace cg::world;
 
-constexpr float half_circle = 180;
+const float kToRadians = std::acos(-1.F) / 180; // NOLINT(*err58*)
 
 cg::world::camera::camera(float width, float height)
     : theta(0.F), phi(0.F), width(width), height(height), aspect_ratio(width / height),
@@ -18,15 +18,15 @@ void cg::world::camera::set_position(float3 in_position) {
 }
 
 void cg::world::camera::set_theta(float in_theta) {
-    theta = in_theta * M_PIf / half_circle;
+    theta = in_theta * kToRadians;
 }
 
 void cg::world::camera::set_phi(float in_phi) {
-    phi = in_phi * M_PIf / half_circle;
+    phi = in_phi * kToRadians;
 }
 
 void cg::world::camera::set_angle_of_view(float in_aov) {
-    angle_of_view = in_aov * M_PIf / half_circle;
+    angle_of_view = in_aov * kToRadians;
 }
 
 void cg::world::camera::set_z_near(float in_z_near) {
