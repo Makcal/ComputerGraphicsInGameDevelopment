@@ -4,6 +4,7 @@
 #include "utils/resource_utils.h"
 #include "utils/timer.h"
 
+#include <cstddef>
 #include <memory>
 #include <utility>
 
@@ -16,19 +17,28 @@ void renderer::rasterization_renderer::init() {
     render_target = std::make_shared<resource<unsigned_color>>(settings->width, settings->height);
     // depth_buffer = std::make_shared<resource<float>>(settings->width,
     // settings->height);
+
     rasterizer = std::make_shared<cg::renderer::rasterizer<vertex, unsigned_color>>(
         settings->width, settings->height, render_target, nullptr);
-    // TODO Lab: 1.03 Adjust `cg::renderer::rasterization_renderer` and
-    // `cg::renderer::renderer` classes to consume `cg::world::model`
+
+    renderer::load_model();
     // TODO Lab: 1.04 Setup an instance of camera `cg::world::camera` class in
     // `cg::renderer::renderer` and `cg::renderer::rasterization_renderer`
     // TODO Lab: 1.06 Add depth buffer in `cg::renderer::rasterization_renderer`
 }
 
 void cg::renderer::rasterization_renderer::render() {
-    utils::timer timer{"render"};
     static constexpr unsigned_color color = {.r = 96, .g = 58, .b = 37};
-    rasterizer->clear_render_target(color);
+    {
+        utils::timer timer{"render"};
+        rasterizer->clear_render_target(color);
+    }
+
+    for (std::size_t shape_i = 0; shape_i < model->get_index_buffers().size(); ++shape_i) {
+        rasterizer->set_vertex_buffer(model->get_vertex_buffers()[shape_i]);
+        rasterizer->set_index_buffer(model->get_index_buffers()[shape_i]);
+        rasterizer->draw(model->get_index_buffers()[shape_i]->count(), 0);
+    }
     // TODO Lab: 1.04 Implement `vertex_shader` lambda for the instance of
     // `cg::renderer::rasterizer`
     // TODO Lab: 1.05 Implement `pixel_shader` lambda for the instance of

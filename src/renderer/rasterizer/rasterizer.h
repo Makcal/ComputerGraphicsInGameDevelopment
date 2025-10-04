@@ -27,14 +27,14 @@ class rasterizer {
     void clear_render_target(const RenderTargetElement& in_clear_value, float in_depth = DEFAULT_DEPTH);
 
     void set_vertex_buffer(std::shared_ptr<resource<VertexBufferElement>> in_vertex_buffer);
-    void set_index_buffer(std::shared_ptr<resource<unsigned int>> in_index_buffer);
+    void set_index_buffer(std::shared_ptr<resource<std::size_t>> in_index_buffer);
 
     void draw(std::size_t num_vertexes, std::size_t vertex_offset);
 
   protected:
     // NOLINTBEGIN(*-non-private-*)
     std::shared_ptr<cg::resource<VertexBufferElement>> vertex_buffer;
-    std::shared_ptr<cg::resource<unsigned int>> index_buffer;
+    std::shared_ptr<cg::resource<std::size_t>> index_buffer;
     std::shared_ptr<cg::resource<RenderTargetElement>> render_target;
     std::shared_ptr<cg::resource<float>> depth_buffer;
 
@@ -76,7 +76,7 @@ void rasterizer<VB, RT>::set_vertex_buffer(std::shared_ptr<resource<VB>> in_vert
 }
 
 template <typename VB, typename RT>
-void rasterizer<VB, RT>::set_index_buffer(std::shared_ptr<resource<unsigned int>> in_index_buffer) {
+void rasterizer<VB, RT>::set_index_buffer(std::shared_ptr<resource<std::size_t>> in_index_buffer) {
     index_buffer = std::move(in_index_buffer);
 }
 
