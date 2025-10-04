@@ -1,5 +1,7 @@
 #include "renderer.h"
+
 #include "settings.h"
+#include "world/camera.h"
 #include "world/model.h"
 
 #include <memory>
@@ -74,6 +76,15 @@ void cg::renderer::renderer::load_model() {
 }
 
 void cg::renderer::renderer::load_camera() {
-    // TODO Lab: 1.04 Setup an instance of camera `cg::world::camera` class in `cg::renderer::renderer` and
-    // `cg::renderer::rasterization_renderer`
+    camera = std::make_shared<world::camera>(settings->width, settings->height);
+    camera->set_position({
+        settings->camera_position[0],
+        settings->camera_position[1],
+        settings->camera_position[2],
+    });
+    camera->set_phi(settings->camera_phi);
+    camera->set_theta(settings->camera_theta);
+    camera->set_angle_of_view(settings->camera_angle_of_view);
+    camera->set_z_far(settings->camera_z_far);
+    camera->set_z_near(settings->camera_z_near);
 }

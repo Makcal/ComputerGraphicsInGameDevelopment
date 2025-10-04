@@ -1,4 +1,5 @@
 #include "rasterizer_renderer.h"
+#include "linalg.h"
 #include "rasterizer.h"
 #include "resource.h"
 #include "utils/resource_utils.h"
@@ -22,13 +23,19 @@ void renderer::rasterization_renderer::init() {
         settings->width, settings->height, render_target, nullptr);
 
     renderer::load_model();
-    // TODO Lab: 1.04 Setup an instance of camera `cg::world::camera` class in
-    // `cg::renderer::renderer` and `cg::renderer::rasterization_renderer`
+    renderer::load_camera();
+
+    float4x4 matrix =
+        linalg::mul(camera->get_projection_matrix(), camera->get_view_matrix(), model->get_world_matrix());
+    rasterizer->set_vertex_shader([matrix](float4 vertex, cg::vertex vertex_data) {
+        float4 transformed = mul(matrix, vertex);
+        return std::make_pair(transformed, vertex_data);
+    });
     // TODO Lab: 1.06 Add depth buffer in `cg::renderer::rasterization_renderer`
 }
 
 void cg::renderer::rasterization_renderer::render() {
-    static constexpr unsigned_color color = {.r = 96, .g = 58, .b = 37};
+    static constexpr unsigned_color color = {.r = 153, .g = 255, .b = 204};
     {
         utils::timer timer{"render"};
         rasterizer->clear_render_target(color);
@@ -39,12 +46,8 @@ void cg::renderer::rasterization_renderer::render() {
         rasterizer->set_index_buffer(model->get_index_buffers()[shape_i]);
         rasterizer->draw(model->get_index_buffers()[shape_i]->count(), 0);
     }
-    // TODO Lab: 1.04 Implement `vertex_shader` lambda for the instance of
-    // `cg::renderer::rasterizer`
     // TODO Lab: 1.05 Implement `pixel_shader` lambda for the instance of
     // `cg::renderer::rasterizer`
-    // TODO Lab: 1.03 Adjust `cg::renderer::rasterization_renderer` and
-    // `cg::renderer::renderer` classes to consume `cg::world::model`
 }
 
 void cg::renderer::rasterization_renderer::destroy() {

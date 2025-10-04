@@ -1,54 +1,57 @@
 #define _USE_MATH_DEFINES
+#include "linalg.h"
 
 #include "camera.h"
 
-#include "utils/error_handler.h"
-
-#include <math.h>
+#include <cmath>
 
 using namespace cg::world;
 
-cg::world::camera::camera()
-    : theta(0.f), phi(0.f), height(1080.f), width(1920.f), aspect_ratio(1920.f / 1080.f), angle_of_view(1.04719f),
-      z_near(0.001f), z_far(100.f), position(float3{0.f, 0.f, 0.f}) {}
+constexpr float half_circle = 180;
 
-cg::world::camera::~camera() {}
+cg::world::camera::camera(float width, float height)
+    : theta(0.F), phi(0.F), width(width), height(height), aspect_ratio(width / height),
+      angle_of_view(1.04719F), z_near(0.001F), z_far(100), position({0, 0, 0}) {} // NOLINT(*magic-number*)
 
 void cg::world::camera::set_position(float3 in_position) {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
+    position = in_position;
 }
 
 void cg::world::camera::set_theta(float in_theta) {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
+    theta = in_theta / M_PIf / half_circle;
 }
 
 void cg::world::camera::set_phi(float in_phi) {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
+    phi = in_phi / M_PIf / half_circle;
 }
 
 void cg::world::camera::set_angle_of_view(float in_aov) {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
-}
-
-void cg::world::camera::set_height(float in_height) {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
-}
-
-void cg::world::camera::set_width(float in_width) {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
+    angle_of_view = in_aov;
 }
 
 void cg::world::camera::set_z_near(float in_z_near) {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
+    z_near = in_z_near;
 }
 
 void cg::world::camera::set_z_far(float in_z_far) {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
+    z_far = in_z_far;
 }
 
-const float4x4 cg::world::camera::get_view_matrix() const {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
-    return float4x4{};
+float4x4 cg::world::camera::get_view_matrix() const {
+    float3 up{0, 1, 0};
+    float3 eye = position + get_direction();
+
+    float3 z_axis = linalg::normalize(position - eye);
+    float3 x_axis = linalg::normalize(linalg::cross(up, z_axis));
+    float3 y_axis = linalg::normalize(linalg::cross(z_axis, x_axis));
+
+    using linalg::dot;
+    return {
+        {x_axis.x, y_axis.x, z_axis.x, 0},
+        {x_axis.y, y_axis.y, z_axis.y, 0},
+        {x_axis.z, y_axis.z, z_axis.z, 0},
+        {-dot(x_axis, position), -dot(y_axis, position), -dot(z_axis, position), 1},
+    };
 }
 
 #ifdef DX12
@@ -71,35 +74,41 @@ const DirectX::XMMATRIX camera::get_dxm_mvp_matrix() const {
 }
 #endif
 
-const float4x4 cg::world::camera::get_projection_matrix() const {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
-    return float4x4{};
+float4x4 cg::world::camera::get_projection_matrix() const {
+    float f = 1 / tanf(angle_of_view / 2);
+    return {
+        {f / aspect_ratio, 0, 0, 0},
+        {0, f, 0, 0},
+        {0, 0, z_far / (z_near - z_far), -1},
+        {0, 0, (z_far * z_near) / (z_near - z_far), 0},
+    };
 }
 
-const float3 cg::world::camera::get_position() const {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
-    return float3{};
+float3 cg::world::camera::get_position() const {
+    return position;
 }
 
-const float3 cg::world::camera::get_direction() const {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
-    return float3{};
+float3 cg::world::camera::get_direction() const {
+    return {
+        // from spherical
+        std::sin(theta) * std::cos(phi),
+        std::sin(phi),
+        -std::cos(theta) * std::cos(phi),
+    };
 }
 
-const float3 cg::world::camera::get_right() const {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
-    return float3{};
+float3 cg::world::camera::get_right() const {
+    return linalg::cross(get_direction(), {0, 1, 0});
 }
 
-const float3 cg::world::camera::get_up() const {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
-    return float3{};
+float3 cg::world::camera::get_up() const {
+    return linalg::cross(get_right(), get_direction());
 }
-const float camera::get_theta() const {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
-    return 0.f;
+
+float camera::get_theta() const {
+    return theta;
 }
-const float camera::get_phi() const {
-    // TODO Lab: 1.04 Implement `cg::world::camera` class
-    return 0.f;
+
+float camera::get_phi() const {
+    return phi;
 }
