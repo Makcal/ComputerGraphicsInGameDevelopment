@@ -76,7 +76,7 @@ void cg::renderer::renderer::load_model() {
 }
 
 void cg::renderer::renderer::load_camera() {
-    camera = std::make_shared<world::camera>(settings->width, settings->height);
+    camera = std::make_shared<world::camera>(static_cast<float>(settings->width), static_cast<float>(settings->height));
     camera->set_position({
         settings->camera_position[0],
         settings->camera_position[1],

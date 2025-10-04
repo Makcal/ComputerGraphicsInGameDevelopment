@@ -1,5 +1,7 @@
 #pragma once
 
+#include "settings.h"
+#include <memory>
 #ifndef UNICODE
 #define UNICODE
 #endif
@@ -11,18 +13,18 @@
 #include <Windows.h>
 #include <d3dx12.h>
 #include <dxgi1_4.h>
-#include <exception>
 #include <initguid.h>
-#include <iostream>
 #include <wrl.h>
+
+namespace cg::renderer {
 
 using namespace Microsoft::WRL;
 
-namespace cg::renderer {
 struct light {
     float4 position;
     float4 color;
 };
+
 struct constant_buffer {
     DirectX::XMMATRIX mwpMatrix;
     DirectX::XMMATRIX shadowMatrix;
@@ -46,6 +48,8 @@ class descriptor_heap {
 
 class dx12_renderer : public renderer {
   public:
+    dx12_renderer(std::shared_ptr<cg::settings> settings);
+
     void init() override;
     void destroy() override;
 
@@ -53,9 +57,10 @@ class dx12_renderer : public renderer {
     void render() override;
 
   protected:
-    static const UINT frame_number = 2;
+    static constexpr UINT frame_number = 2;
 
     // Pipeline objects.
+    // NOLINTBEGIN(*non-private*)
     ComPtr<ID3D12Device> device;
     ComPtr<ID3D12CommandQueue> command_queue;
     ComPtr<IDXGISwapChain3> swap_chain;
@@ -101,6 +106,7 @@ class dx12_renderer : public renderer {
     HANDLE fence_event;
     ComPtr<ID3D12Fence> fence;
     UINT64 fence_values[frame_number];
+    // NOLINTEND(*non-private*)
 
     void load_pipeline();
     void load_assets();
@@ -152,4 +158,5 @@ class dx12_renderer : public renderer {
 
     void create_shader_resource_view(const ComPtr<ID3D12Resource>& texture, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handler);
 };
+
 } // namespace cg::renderer

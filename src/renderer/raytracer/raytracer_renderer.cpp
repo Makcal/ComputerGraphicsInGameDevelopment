@@ -1,9 +1,12 @@
 #include "raytracer_renderer.h"
 
-#include "utils/resource_utils.h"
-#include "utils/timer.h"
+#include "settings.h"
 
-#include <iostream>
+#include <memory>
+#include <utility>
+
+cg::renderer::ray_tracing_renderer::ray_tracing_renderer(std::shared_ptr<cg::settings> settings)
+    : renderer{std::move(settings)} {}
 
 void cg::renderer::ray_tracing_renderer::init() {
     // TODO Lab: 2.01 Add `render_target`, `camera`, and `raytracer` in `ray_tracing_renderer` class

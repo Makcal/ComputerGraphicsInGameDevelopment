@@ -2,15 +2,16 @@
 
 #include "resource.h"
 
-#include <iostream>
 #include <linalg.h>
-#include <memory>
 #include <omp.h>
-#include <random>
+
+#include <cstddef>
+#include <memory>
+
+namespace cg::renderer {
 
 using namespace linalg::aliases;
 
-namespace cg::renderer {
 struct ray {
     ray(float3 position, float3 direction) : position(position) {
         this->direction = normalize(direction);
@@ -19,7 +20,7 @@ struct ray {
     float3 direction;
 };
 
-struct payload {
+struct payload { // NOLINT(*member-init)
     float t;
     float3 bary;
     cg::color color;
@@ -53,15 +54,17 @@ inline triangle<VB>::triangle(const VB& vertex_a, const VB& vertex_b, const VB& 
 template <typename VB>
 class aabb {
   public:
-    void add_triangle(const triangle<VB> triangle);
+    void add_triangle(const triangle<VB>& triangle);
     const std::vector<triangle<VB>>& get_triangles() const;
-    bool aabb_test(const ray& ray) const;
+    [[nodiscard]] bool aabb_test(const ray& ray) const;
 
   protected:
+    // NOLINTBEGIN(*non-private*)
     std::vector<triangle<VB>> triangles;
 
     float3 aabb_min;
     float3 aabb_max;
+    // NOLINTEND(*non-private*)
 };
 
 struct light {
@@ -72,41 +75,56 @@ struct light {
 template <typename VB, typename RT>
 class raytracer {
   public:
-    raytracer() {};
-    ~raytracer() {};
+    raytracer(std::size_t width, std::size_t height);
 
     void set_render_target(std::shared_ptr<resource<RT>> in_render_target);
     void clear_render_target(const RT& in_clear_value);
-    void set_viewport(size_t in_width, size_t in_height);
+    void set_viewport(std::size_t in_width, std::size_t in_height);
 
     void set_vertex_buffers(std::vector<std::shared_ptr<cg::resource<VB>>> in_vertex_buffers);
     void set_index_buffers(std::vector<std::shared_ptr<cg::resource<unsigned int>>> in_index_buffers);
+    void set_acceleration_structures(std::vector<aabb<VB>> in_acceleration_structures);
     void build_acceleration_structure();
-    std::vector<aabb<VB>> acceleration_structures;
 
-    void
-    ray_generation(float3 position, float3 direction, float3 right, float3 up, size_t depth, size_t accumulation_num);
+    void set_miss_shader(std::function<payload(const ray& ray)> miss_shader);
+    void set_closest_hit_shader(
+        std::function<payload(const ray& ray, payload& payload, const triangle<VB>& triangle, std::size_t depth)>
+            closest_hit_shader);
+    void set_any_hit_shader(
+        std::function<payload(const ray& ray, payload& payload, const triangle<VB>& triangle)> any_hit_shader);
 
-    payload trace_ray(const ray& ray, size_t depth, float max_t = 1000.f, float min_t = 0.001f) const;
+    void ray_generation(
+        float3 position, float3 direction, float3 right, float3 up, std::size_t depth, std::size_t accumulation_num);
+
+    [[nodiscard]] payload
+    trace_ray(const ray& ray, std::size_t depth, float max_t = 1000.f, float min_t = 0.001f) const; // NOLINT
+
     payload intersection_shader(const triangle<VB>& triangle, const ray& ray) const;
-
-    std::function<payload(const ray& ray)> miss_shader = nullptr;
-    std::function<payload(const ray& ray, payload& payload, const triangle<VB>& triangle, size_t depth)>
-        closest_hit_shader = nullptr;
-    std::function<payload(const ray& ray, payload& payload, const triangle<VB>& triangle)> any_hit_shader = nullptr;
 
     float2 get_jitter(int frame_id);
 
   protected:
+    // NOLINTBEGIN(*non-private*)
     std::shared_ptr<cg::resource<RT>> render_target;
     std::shared_ptr<cg::resource<float3>> history;
     std::vector<std::shared_ptr<cg::resource<unsigned int>>> index_buffers;
     std::vector<std::shared_ptr<cg::resource<VB>>> vertex_buffers;
     std::vector<triangle<VB>> triangles;
 
-    size_t width = 1920;
-    size_t height = 1080;
+    std::size_t width;
+    std::size_t height;
+
+    std::vector<aabb<VB>> acceleration_structures;
+
+    std::function<payload(const ray& ray)> miss_shader = nullptr;
+    std::function<payload(const ray& ray, payload& payload, const triangle<VB>& triangle, std::size_t depth)>
+        closest_hit_shader = nullptr;
+    std::function<payload(const ray& ray, payload& payload, const triangle<VB>& triangle)> any_hit_shader = nullptr;
+    // NOLINTEND(*non-private*)
 };
+
+template <typename VB, typename RT>
+inline raytracer<VB, RT>::raytracer(std::size_t width, std::size_t height) : width{width}, height{height} {};
 
 template <typename VB, typename RT>
 inline void raytracer<VB, RT>::set_render_target(std::shared_ptr<resource<RT>> in_render_target) {
@@ -115,7 +133,7 @@ inline void raytracer<VB, RT>::set_render_target(std::shared_ptr<resource<RT>> i
 }
 
 template <typename VB, typename RT>
-inline void raytracer<VB, RT>::set_viewport(size_t in_width, size_t in_height) {
+inline void raytracer<VB, RT>::set_viewport(std::size_t in_width, std::size_t in_height) {
     // TODO Lab: 2.01 Implement `set_render_target`, `set_viewport`, and `clear_render_target` methods of `raytracer`
     // class
     // TODO Lab: 2.06 Add `history` resource in `raytracer` class
@@ -146,13 +164,13 @@ inline void raytracer<VB, RT>::build_acceleration_structure() {
 
 template <typename VB, typename RT>
 inline void raytracer<VB, RT>::ray_generation(
-    float3 position, float3 direction, float3 right, float3 up, size_t depth, size_t accumulation_num) {
+    float3 position, float3 direction, float3 right, float3 up, std::size_t depth, std::size_t accumulation_num) {
     // TODO Lab: 2.01 Implement `ray_generation` and `trace_ray` method of `raytracer` class
     // TODO Lab: 2.06 Implement TAA in `ray_generation` method of `raytracer` class
 }
 
 template <typename VB, typename RT>
-inline payload raytracer<VB, RT>::trace_ray(const ray& ray, size_t depth, float max_t, float min_t) const {
+inline payload raytracer<VB, RT>::trace_ray(const ray& ray, std::size_t depth, float max_t, float min_t) const {
     // TODO Lab: 2.01 Implement `ray_generation` and `trace_ray` method of `raytracer` class
     // TODO Lab: 2.02 Adjust `trace_ray` method of `raytracer` class to traverse geometry and call a closest hit shader
     // TODO Lab: 2.04 Adjust `trace_ray` method of `raytracer` to use `any_hit_shader`
@@ -172,7 +190,7 @@ float2 raytracer<VB, RT>::get_jitter(int frame_id) {
 }
 
 template <typename VB>
-inline void aabb<VB>::add_triangle(const triangle<VB> triangle) {
+inline void aabb<VB>::add_triangle(const triangle<VB>& triangle) {
     // TODO Lab: 2.05 Implement `aabb` class
 }
 

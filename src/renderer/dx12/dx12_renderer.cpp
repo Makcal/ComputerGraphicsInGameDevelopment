@@ -1,5 +1,6 @@
 #include "dx12_renderer.h"
 
+#include "settings.h"
 #include "utils/com_error_handler.h"
 #include "utils/window.h"
 
@@ -7,6 +8,10 @@
 #include <stb_image.h>
 
 #include <filesystem>
+#include <memory>
+#include <utility>
+
+cg::renderer::dx12_renderer::dx12_renderer(std::shared_ptr<cg::settings> settings) : renderer{std::move(settings)} {}
 
 void cg::renderer::dx12_renderer::init() {
     // TODO Lab: 3.01 Add `model` and `camera` creation code into `init` method of `dx12_renderer` class
