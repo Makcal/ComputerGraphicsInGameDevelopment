@@ -2,8 +2,10 @@
 
 #include "resource.h"
 
+#include <iostream>
 #include <linalg.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <functional>
 #include <limits>
@@ -32,7 +34,7 @@ class rasterizer {
 
     void set_vertex_shader(
         std::function<std::pair<float4, VertexBufferElement>(float4 vertex, VertexBufferElement vertex_data)> shader);
-    void set_pixel_shader(std::function<cg::color(const VertexBufferElement& vertex_data, const float z)> shader);
+    void set_pixel_shader(std::function<cg::color(const VertexBufferElement& vertex_data, float z)> shader);
 
     void draw(std::size_t num_vertices, std::size_t vertex_offset);
 
@@ -47,10 +49,10 @@ class rasterizer {
     std::size_t height;
 
     std::function<std::pair<float4, VertexBufferElement>(float4 vertex, VertexBufferElement vertex_data)> vertex_shader;
-    std::function<cg::color(const VertexBufferElement& vertex_data, const float z)> pixel_shader;
+    std::function<cg::color(const VertexBufferElement& vertex_data, float z)> pixel_shader;
     // NOLINTEND(*-non-private-*)
 
-    int edge_function(int2 a, int2 b, int2 c);
+    int edge_function(int2 a, int2 b, int2 p);
     bool depth_test(float z, std::size_t x, std::size_t y);
 };
 
@@ -89,12 +91,12 @@ template <typename VB, typename RT>
 void rasterizer<VB, RT>::draw(std::size_t num_vertices, std::size_t vertex_offset) {
     for (std::size_t vertex_i = vertex_offset; vertex_i < num_vertices + vertex_offset;) {
         std::vector<VB> vertices;
-        vertices.reserve(3);
+        vertices.reserve(3); // take by portions of 3
         vertices.push_back(vertex_buffer->item(index_buffer->item(vertex_i++)));
         vertices.push_back(vertex_buffer->item(index_buffer->item(vertex_i++)));
         vertices.push_back(vertex_buffer->item(index_buffer->item(vertex_i++)));
 
-        for (vertex& vertex : vertices) {
+        for (VB& vertex : vertices) {
             float4 coords{vertex.v.x, vertex.v.y, vertex.v.z, 1};
             std::pair<float4, VB> transformed = vertex_shader(coords, vertex);
 
@@ -105,15 +107,41 @@ void rasterizer<VB, RT>::draw(std::size_t num_vertices, std::size_t vertex_offse
             vertex.v.x = (vertex.v.x + 1) * width / 2;
             vertex.v.y = (-vertex.v.y + 1) * height / 2;
         }
+
+        int2 vertex_a{static_cast<int>(vertices[0].v.x), static_cast<int>(vertices[0].v.y)};
+        int2 vertex_b{static_cast<int>(vertices[1].v.x), static_cast<int>(vertices[1].v.y)};
+        int2 vertex_c{static_cast<int>(vertices[2].v.x), static_cast<int>(vertices[2].v.y)};
+
+        int2 min_border{0, 0};
+        int2 max_border{static_cast<int>(width), static_cast<int>(height)};
+
+        int2 min_vertex = std::min(vertex_a, std::min(vertex_b, vertex_c));
+        min_vertex = std::clamp(min_vertex, min_border, max_border);
+        int2 max_vertex = std::max(vertex_a, std::max(vertex_b, vertex_c));
+        max_vertex = std::clamp(max_vertex, min_border, max_border);
+
+        for (int x = min_vertex.x; x < max_vertex.x; ++x) {
+            for (int y = min_vertex.y; y < max_vertex.y; ++y) {
+                int2 point{x, y};
+                int edge1 = edge_function(vertex_a, vertex_b, point);
+                int edge2 = edge_function(vertex_b, vertex_c, point);
+                int edge3 = edge_function(vertex_c, vertex_a, point);
+                if (edge1 >= 0 && edge2 >= 0 && edge3 >= 0) {
+                    float depth = 1;
+                    color result = pixel_shader(vertices[0], depth);
+                    render_target->item(x, y) = RT::from_color(result);
+                }
+            }
+        }
     }
-    // TODO Lab: 1.05 Add `Rasterization` and `Pixel shader` stages to `draw` method of `cg::renderer::rasterizer`
     // TODO Lab: 1.06 Add `Depth test` stage to `draw` method of `cg::renderer::rasterizer`
 }
 
 template <typename VB, typename RT>
-int rasterizer<VB, RT>::edge_function(int2 /*a*/, int2 /*b*/, int2 /*c*/) {
-    // TODO Lab: 1.05 Implement `cg::renderer::rasterizer::edge_function` method
-    return 0;
+int rasterizer<VB, RT>::edge_function(int2 a, int2 b, int2 p) { // point P relative to AB
+    int dy = b.y - a.y;
+    int dx = b.x - a.x;
+    return ((p.x - a.x) * dy) - ((p.y - a.y) * dx);
 }
 
 template <typename VB, typename RT>
@@ -129,7 +157,7 @@ void rasterizer<VB, RT>::set_vertex_shader(std::function<std::pair<float4, VB>(f
 }
 
 template <typename VB, typename RT>
-void rasterizer<VB, RT>::set_pixel_shader(std::function<cg::color(const VB& vertex_data, const float z)> shader) {
+void rasterizer<VB, RT>::set_pixel_shader(std::function<cg::color(const VB& vertex_data, float z)> shader) {
     pixel_shader = std::move(shader);
 }
 

@@ -128,7 +128,7 @@ void model::fill_buffers(const std::vector<tinyobj::shape_t>& shapes,
             if (mesh.indices[index_offset].normal_index < 0)
                 normal = compute_normal(attrib, mesh, index_offset);
 
-            for (std::size_t v = 0; v < fv; ++v, ++index_buffer_id) {
+            for (std::size_t v = 0; v < fv; ++v) {
                 tinyobj::index_t idx = mesh.indices[index_offset + v]; // indices is flattened
                 int3 idx_tuple = {idx.vertex_index, idx.normal_index, idx.texcoord_index};
 
@@ -141,6 +141,8 @@ void model::fill_buffers(const std::vector<tinyobj::shape_t>& shapes,
 
                     ++vertex_buffer_id;
                 }
+                index_buffer->item(index_buffer_id) = index_map[idx_tuple];
+                ++index_buffer_id;
             }
             index_offset += fv;
         }

@@ -31,6 +31,10 @@ void renderer::rasterization_renderer::init() {
         float4 transformed = mul(matrix, vertex);
         return std::make_pair(transformed, vertex_data);
     });
+
+    rasterizer->set_pixel_shader([](const vertex& vertex_data, float  /*z*/) {
+        return color::from_float3(vertex_data.ambient);
+    });
     // TODO Lab: 1.06 Add depth buffer in `cg::renderer::rasterization_renderer`
 }
 
@@ -46,8 +50,6 @@ void cg::renderer::rasterization_renderer::render() {
         rasterizer->set_index_buffer(model->get_index_buffers()[shape_i]);
         rasterizer->draw(model->get_index_buffers()[shape_i]->count(), 0);
     }
-    // TODO Lab: 1.05 Implement `pixel_shader` lambda for the instance of
-    // `cg::renderer::rasterizer`
 }
 
 void cg::renderer::rasterization_renderer::destroy() {

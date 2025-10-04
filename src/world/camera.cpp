@@ -18,15 +18,15 @@ void cg::world::camera::set_position(float3 in_position) {
 }
 
 void cg::world::camera::set_theta(float in_theta) {
-    theta = in_theta / M_PIf / half_circle;
+    theta = in_theta * M_PIf / half_circle;
 }
 
 void cg::world::camera::set_phi(float in_phi) {
-    phi = in_phi / M_PIf / half_circle;
+    phi = in_phi * M_PIf / half_circle;
 }
 
 void cg::world::camera::set_angle_of_view(float in_aov) {
-    angle_of_view = in_aov;
+    angle_of_view = in_aov * M_PIf / half_circle;
 }
 
 void cg::world::camera::set_z_near(float in_z_near) {

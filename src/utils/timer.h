@@ -3,13 +3,21 @@
 #include <chrono>
 #include <iostream>
 #include <string>
+#include <utility>
 
 namespace cg::utils {
+
 class timer {
   public:
-    explicit timer(const std::string& message) : event(message) {
+    explicit timer(std::string message) : event(std::move(message)) {
         start = std::chrono::high_resolution_clock::now();
     }
+
+    timer(const timer&) = delete;
+    timer(timer&&) = delete;
+    timer& operator=(const timer&) = delete;
+    timer& operator=(timer&&) = delete;
+
     ~timer() {
         auto stop = std::chrono::high_resolution_clock::now();
         std::chrono::duration<float, std::milli> duration = stop - start;
@@ -20,4 +28,5 @@ class timer {
     std::string event;
     std::chrono::time_point<std::chrono::high_resolution_clock> start;
 };
+
 } // namespace cg::utils
