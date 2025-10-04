@@ -30,12 +30,12 @@ void cg::renderer::dx12_renderer::render() {
     // TODO Lab: 3.06 Implement `render` method
 }
 
-ComPtr<IDXGIFactory4> cg::renderer::dx12_renderer::get_dxgi_factory() {
+Microsoft::WRL::ComPtr<IDXGIFactory4> cg::renderer::dx12_renderer::get_dxgi_factory() {
     // TODO Lab: 3.02 Enable a validation layer
     return nullptr;
 }
 
-void cg::renderer::dx12_renderer::initialize_device(ComPtr<IDXGIFactory4>& dxgi_factory) {
+void cg::renderer::dx12_renderer::initialize_device(Microsoft::WRL::ComPtr<IDXGIFactory4>& dxgi_factory) {
     // TODO Lab: 3.02 Enumerate hardware adapters
     // TODO Lab: 3.02 Create a device object
 }
@@ -44,7 +44,7 @@ void cg::renderer::dx12_renderer::create_direct_command_queue() {
     // TODO Lab: 3.02 Create a command queue
 }
 
-void cg::renderer::dx12_renderer::create_swap_chain(ComPtr<IDXGIFactory4>& dxgi_factory) {
+void cg::renderer::dx12_renderer::create_swap_chain(Microsoft::WRL::ComPtr<IDXGIFactory4>& dxgi_factory) {
     // TODO Lab: 3.02 Create a swap chain and bind it to window
 }
 
@@ -83,7 +83,8 @@ std::filesystem::path cg::renderer::dx12_renderer::get_shader_path() {
     return "";
 }
 
-ComPtr<ID3DBlob> cg::renderer::dx12_renderer::compile_shader(const std::string& entrypoint, const std::string& target) {
+Microsoft::WRL::ComPtr<ID3DBlob> cg::renderer::dx12_renderer::compile_shader(const std::string& entrypoint,
+                                                                             const std::string& target) {
     // TODO Lab: 3.05 Compile shaders
     return nullptr;
 }
@@ -93,49 +94,49 @@ void cg::renderer::dx12_renderer::create_pso() {
     // TODO Lab: 3.05 Setup a PSO descriptor and create a PSO
 }
 
-void cg::renderer::dx12_renderer::create_resource_on_upload_heap(ComPtr<ID3D12Resource>& resource,
+void cg::renderer::dx12_renderer::create_resource_on_upload_heap(Microsoft::WRL::ComPtr<ID3D12Resource>& resource,
                                                                  UINT size,
                                                                  const std::wstring& name) {
     // TODO Lab: 3.03 Implement resource creation on upload heap
 }
 
-void cg::renderer::dx12_renderer::create_resource_on_default_heap(ComPtr<ID3D12Resource>& resource,
+void cg::renderer::dx12_renderer::create_resource_on_default_heap(Microsoft::WRL::ComPtr<ID3D12Resource>& resource,
                                                                   UINT size,
                                                                   const std::wstring& name,
                                                                   D3D12_RESOURCE_DESC* resource_descriptor) {}
 
 void cg::renderer::dx12_renderer::copy_data(const void* buffer_data,
                                             UINT buffer_size,
-                                            ComPtr<ID3D12Resource>& destination_resource) {
+                                            Microsoft::WRL::ComPtr<ID3D12Resource>& destination_resource) {
     // TODO Lab: 3.03 Implement map, unmap, and copying data to the resource
 }
 
 void cg::renderer::dx12_renderer::copy_data(const void* buffer_data,
                                             const UINT buffer_size,
-                                            ComPtr<ID3D12Resource>& destination_resource,
-                                            ComPtr<ID3D12Resource>& intermediate_resource,
+                                            Microsoft::WRL::ComPtr<ID3D12Resource>& destination_resource,
+                                            Microsoft::WRL::ComPtr<ID3D12Resource>& intermediate_resource,
                                             D3D12_RESOURCE_STATES state_after,
                                             int row_pitch,
                                             int slice_pitch) {}
 
 D3D12_VERTEX_BUFFER_VIEW
-cg::renderer::dx12_renderer::create_vertex_buffer_view(const ComPtr<ID3D12Resource>& vertex_buffer,
+cg::renderer::dx12_renderer::create_vertex_buffer_view(const Microsoft::WRL::ComPtr<ID3D12Resource>& vertex_buffer,
                                                        const UINT vertex_buffer_size) {
     // TODO Lab: 3.04 Create vertex buffer views
     return D3D12_VERTEX_BUFFER_VIEW{};
 }
 
 D3D12_INDEX_BUFFER_VIEW
-cg::renderer::dx12_renderer::create_index_buffer_view(const ComPtr<ID3D12Resource>& index_buffer,
+cg::renderer::dx12_renderer::create_index_buffer_view(const Microsoft::WRL::ComPtr<ID3D12Resource>& index_buffer,
                                                       const UINT index_buffer_size) {
     // TODO Lab: 3.04 Create index buffer views
     return D3D12_INDEX_BUFFER_VIEW{};
 }
 
-void cg::renderer::dx12_renderer::create_shader_resource_view(const ComPtr<ID3D12Resource>& texture,
+void cg::renderer::dx12_renderer::create_shader_resource_view(const Microsoft::WRL::ComPtr<ID3D12Resource>& texture,
                                                               D3D12_CPU_DESCRIPTOR_HANDLE cpu_handler) {}
 
-void cg::renderer::dx12_renderer::create_constant_buffer_view(const ComPtr<ID3D12Resource>& buffer,
+void cg::renderer::dx12_renderer::create_constant_buffer_view(const Microsoft::WRL::ComPtr<ID3D12Resource>& buffer,
                                                               D3D12_CPU_DESCRIPTOR_HANDLE cpu_handler) {
     // TODO Lab: 3.04 Create a constant buffer view
 }
@@ -170,7 +171,7 @@ void cg::renderer::dx12_renderer::wait_for_gpu() {
     // TODO Lab: 3.07 Implement `wait_for_gpu` method
 }
 
-void cg::renderer::descriptor_heap::create_heap(ComPtr<ID3D12Device>& device,
+void cg::renderer::descriptor_heap::create_heap(Microsoft::WRL::ComPtr<ID3D12Device>& device,
                                                 D3D12_DESCRIPTOR_HEAP_TYPE type,
                                                 UINT number,
                                                 D3D12_DESCRIPTOR_HEAP_FLAGS flags) {
