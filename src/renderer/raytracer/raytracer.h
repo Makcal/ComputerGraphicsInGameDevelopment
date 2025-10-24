@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <utility>
 
 namespace cg::renderer {
 
@@ -75,11 +76,9 @@ struct light {
 template <typename VB, typename RT>
 class raytracer {
   public:
-    raytracer(std::size_t width, std::size_t height);
+    raytracer(std::size_t width, std::size_t height, std::shared_ptr<resource<RT>> in_render_target);
 
-    void set_render_target(std::shared_ptr<resource<RT>> in_render_target);
     void clear_render_target(const RT& in_clear_value);
-    void set_viewport(std::size_t in_width, std::size_t in_height);
 
     void set_vertex_buffers(std::vector<std::shared_ptr<cg::resource<VB>>> in_vertex_buffers);
     void set_index_buffers(std::vector<std::shared_ptr<cg::resource<unsigned int>>> in_index_buffers);
@@ -124,25 +123,16 @@ class raytracer {
 };
 
 template <typename VB, typename RT>
-inline raytracer<VB, RT>::raytracer(std::size_t width, std::size_t height) : width{width}, height{height} {};
-
-template <typename VB, typename RT>
-inline void raytracer<VB, RT>::set_render_target(std::shared_ptr<resource<RT>> in_render_target) {
-    // TODO Lab: 2.01 Implement `set_render_target`, `set_viewport`, and `clear_render_target` methods of `raytracer`
-    // class
-}
-
-template <typename VB, typename RT>
-inline void raytracer<VB, RT>::set_viewport(std::size_t in_width, std::size_t in_height) {
-    // TODO Lab: 2.01 Implement `set_render_target`, `set_viewport`, and `clear_render_target` methods of `raytracer`
-    // class
-    // TODO Lab: 2.06 Add `history` resource in `raytracer` class
-}
+inline raytracer<VB, RT>::raytracer(std::size_t width,
+                                    std::size_t height,
+                                    std::shared_ptr<resource<RT>> in_render_target)
+    : width{width}, height{height}, render_target{std::move(in_render_target)} {};
 
 template <typename VB, typename RT>
 inline void raytracer<VB, RT>::clear_render_target(const RT& in_clear_value) {
-    // TODO Lab: 2.01 Implement `set_render_target`, `set_viewport`, and `clear_render_target` methods of `raytracer`
-    // class
+    for (std::size_t i = 0; i < render_target->count(); i++) {
+        render_target->item(i) = in_clear_value;
+    }
     // TODO Lab: 2.06 Add `history` resource in `raytracer` class
 }
 
@@ -157,25 +147,51 @@ void raytracer<VB, RT>::set_index_buffers(std::vector<std::shared_ptr<cg::resour
 }
 
 template <typename VB, typename RT>
+void raytracer<VB, RT>::set_miss_shader(std::function<payload(const ray& ray)> miss_shader) {
+    this->miss_shader = std::move(miss_shader);
+}
+
+template <typename VB, typename RT>
 inline void raytracer<VB, RT>::build_acceleration_structure() {
     // TODO Lab: 2.02 Fill `triangles` vector in `build_acceleration_structure` of `raytracer` class
     // TODO Lab: 2.05 Implement `build_acceleration_structure` method of `raytracer` class
 }
 
 template <typename VB, typename RT>
-inline void raytracer<VB, RT>::ray_generation(
-    float3 position, float3 direction, float3 right, float3 up, std::size_t depth, std::size_t accumulation_num) {
-    // TODO Lab: 2.01 Implement `ray_generation` and `trace_ray` method of `raytracer` class
+inline void raytracer<VB, RT>::ray_generation(const float3 position,
+                                              const float3 direction,
+                                              const float3 right,
+                                              const float3 up,
+                                              const std::size_t depth,
+                                              const std::size_t /*accumulation_num*/) {
+
+#pragma omp parallel for shared(depth, position, direction, right, up) default(none)
+    for (std::size_t x = 0; x < width; x++) {
+        for (std::size_t y = 0; y < height; y++) {
+            float u = (2 * static_cast<float>(x) / static_cast<float>(width - 1)) - 1;
+            float v = (2 * static_cast<float>(y) / static_cast<float>(height - 1)) - 1;
+            u *= static_cast<float>(width) / static_cast<float>(height);
+            float3 ray_direction = direction + u * right - v * up;
+
+            ray ray{position, ray_direction};
+
+            payload payload = trace_ray(ray, depth);
+
+            render_target->item(x, y) = RT::from_color(payload.color);
+        }
+    }
     // TODO Lab: 2.06 Implement TAA in `ray_generation` method of `raytracer` class
 }
 
 template <typename VB, typename RT>
 inline payload raytracer<VB, RT>::trace_ray(const ray& ray, std::size_t depth, float max_t, float min_t) const {
-    // TODO Lab: 2.01 Implement `ray_generation` and `trace_ray` method of `raytracer` class
+    if (depth == 0)
+        return miss_shader(ray);
+    --depth;
     // TODO Lab: 2.02 Adjust `trace_ray` method of `raytracer` class to traverse geometry and call a closest hit shader
     // TODO Lab: 2.04 Adjust `trace_ray` method of `raytracer` to use `any_hit_shader`
     // TODO Lab: 2.05 Adjust `trace_ray` method of `raytracer` class to traverse the acceleration structure
-    return payload{};
+    return miss_shader(ray);
 }
 
 template <typename VB, typename RT>
@@ -187,6 +203,7 @@ inline payload raytracer<VB, RT>::intersection_shader(const triangle<VB>& triang
 template <typename VB, typename RT>
 float2 raytracer<VB, RT>::get_jitter(int frame_id) {
     // TODO Lab: 2.06 Implement `get_jitter` method of `raytracer` class
+    return {};
 }
 
 template <typename VB>
@@ -196,12 +213,13 @@ inline void aabb<VB>::add_triangle(const triangle<VB>& triangle) {
 
 template <typename VB>
 inline const std::vector<triangle<VB>>& aabb<VB>::get_triangles() const {
-    // TODO Lab: 2.05 Implement `aabb` class
+    return triangles;
 }
 
 template <typename VB>
 inline bool aabb<VB>::aabb_test(const ray& ray) const {
     // TODO Lab: 2.05 Implement `aabb` class
+    return false;
 }
 
 } // namespace cg::renderer
