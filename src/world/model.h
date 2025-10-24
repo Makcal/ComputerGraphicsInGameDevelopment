@@ -22,7 +22,7 @@ class model {
     [[nodiscard]] const std::vector<std::shared_ptr<cg::resource<std::size_t>>>& get_index_buffers() const;
     [[nodiscard]] const std::vector<std::filesystem::path>& get_per_shape_texture_files() const;
 
-    [[nodiscard]] const float4x4 get_world_matrix() const;
+    [[nodiscard]] static constexpr float4x4 get_world_matrix();
 
   protected:
     // NOLINTBEGIN(*-non-private-*)

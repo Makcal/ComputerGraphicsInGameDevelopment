@@ -11,8 +11,8 @@ class renderer { // NOLINT(*special-member*)
     explicit renderer(std::shared_ptr<cg::settings> settings);
     virtual ~renderer() = default;
 
-    unsigned get_height();
-    unsigned get_width();
+    std::size_t get_height();
+    std::size_t get_width();
 
     virtual void init() = 0;
     virtual void destroy() = 0;

@@ -1,15 +1,17 @@
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
 #include <memory>
 #include <vector>
 
 namespace cg {
+
 struct settings {
     static std::shared_ptr<settings> parse_settings(int argc, char** argv);
 
-    unsigned height;
-    unsigned width;
+    std::size_t height;
+    std::size_t width;
 
     std::filesystem::path model_path;
 
@@ -22,8 +24,8 @@ struct settings {
 
     std::filesystem::path result_path;
 
-    unsigned raytracing_depth;
-    unsigned accumulation_num;
+    std::size_t raytracing_depth;
+    std::size_t accumulation_num;
 
     std::filesystem::path shader_path;
 };

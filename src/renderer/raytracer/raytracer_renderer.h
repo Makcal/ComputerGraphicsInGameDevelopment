@@ -6,8 +6,11 @@
 #include <memory>
 
 namespace cg::renderer {
+
 class ray_tracing_renderer : public renderer {
   public:
+    friend struct RayTracerInitializer;
+
     explicit ray_tracing_renderer(std::shared_ptr<cg::settings> settings);
 
     void init() override;
@@ -26,4 +29,5 @@ class ray_tracing_renderer : public renderer {
     std::vector<cg::renderer::light> lights{}; // NOLINT(*redundant-member-init) linter bug in constructor's definition
     // NOLINTEND(*non-private*)
 };
+
 } // namespace cg::renderer

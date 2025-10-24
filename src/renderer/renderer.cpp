@@ -23,11 +23,11 @@ using namespace cg::renderer;
 
 renderer::renderer(std::shared_ptr<cg::settings> settings) : settings{std::move(settings)} {}
 
-unsigned cg::renderer::renderer::get_height() {
+std::size_t cg::renderer::renderer::get_height() {
     return settings->height;
 }
 
-unsigned cg::renderer::renderer::get_width() {
+std::size_t cg::renderer::renderer::get_width() {
     return settings->width;
 }
 
