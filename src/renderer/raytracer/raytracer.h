@@ -153,13 +153,15 @@ inline void raytracer<VB, RT>::build_acceleration_structure() {
     for (std::size_t s = 0; s < index_buffers.size(); s++) {
         auto& index_buffer = index_buffers[s];
         auto& vertex_buffer = vertex_buffers[s];
+        aabb<VB> aabb;
         for (std::size_t i = 0; i < index_buffer->count();) {
-            triangles.emplace_back(vertex_buffer->item(index_buffer->item(i++)),
-                                   vertex_buffer->item(index_buffer->item(i++)),
-                                   vertex_buffer->item(index_buffer->item(i++)));
+            triangle<VB> triangle{vertex_buffer->item(index_buffer->item(i++)),
+                                  vertex_buffer->item(index_buffer->item(i++)),
+                                  vertex_buffer->item(index_buffer->item(i++))};
+            aabb.add_triangle(triangle);
         }
+        acceleration_structures.push_back(std::move(aabb));
     }
-    // TODO Lab: 2.05 Implement `build_acceleration_structure` method of `raytracer` class
 }
 
 template <typename VB, typename RT>
@@ -190,8 +192,6 @@ inline void raytracer<VB, RT>::ray_generation(const float3 position,
 
 template <typename VB, typename RT>
 inline payload raytracer<VB, RT>::trace_ray(const ray& ray, std::size_t depth, float max_t, float min_t) const {
-    // TODO Lab: 2.04 Adjust `trace_ray` method of `raytracer` to use `any_hit_shader`
-    // TODO Lab: 2.05 Adjust `trace_ray` method of `raytracer` class to traverse the acceleration structure
     if (depth == 0)
         return miss_shader(ray);
     --depth;
@@ -200,13 +200,17 @@ inline payload raytracer<VB, RT>::trace_ray(const ray& ray, std::size_t depth, f
     closest_hit_payload.t = max_t;
     const triangle<VB>* closest_triangle = nullptr;
 
-    for (const triangle<VB>& triangle : triangles) {
-        payload payload = intersection_shader(triangle, ray);
-        if (payload.t > min_t && payload.t < closest_hit_payload.t) {
-            if (any_hit_shader)
-                return any_hit_shader(ray, payload, triangle);
-            closest_hit_payload = payload;
-            closest_triangle = &triangle;
+    for (const aabb<VB>& aabb : acceleration_structures) {
+        if (!aabb.aabb_test(ray))
+            continue;
+        for (const triangle<VB>& triangle : aabb.get_triangles()) {
+            payload payload = intersection_shader(triangle, ray);
+            if (payload.t > min_t && payload.t < closest_hit_payload.t) {
+                if (any_hit_shader)
+                    return any_hit_shader(ray, payload, triangle);
+                closest_hit_payload = payload;
+                closest_triangle = &triangle;
+            }
         }
     }
 
@@ -248,14 +252,24 @@ inline payload raytracer<VB, RT>::intersection_shader(const triangle<VB>& triang
 }
 
 template <typename VB, typename RT>
-float2 raytracer<VB, RT>::get_jitter(int frame_id) {
+float2 raytracer<VB, RT>::get_jitter(int /*frame_id*/) {
     // TODO Lab: 2.06 Implement `get_jitter` method of `raytracer` class
     return {};
 }
 
 template <typename VB>
 inline void aabb<VB>::add_triangle(const triangle<VB>& triangle) {
-    // TODO Lab: 2.05 Implement `aabb` class
+    if (triangles.empty()) {
+        aabb_max = triangle.a;
+        aabb_min = triangle.a;
+    }
+    triangles.push_back(triangle);
+    aabb_max = linalg::max(aabb_max, triangle.a);
+    aabb_max = linalg::max(aabb_max, triangle.b);
+    aabb_max = linalg::max(aabb_max, triangle.c);
+    aabb_min = linalg::min(aabb_min, triangle.a);
+    aabb_min = linalg::min(aabb_min, triangle.b);
+    aabb_min = linalg::min(aabb_min, triangle.c);
 }
 
 template <typename VB>
@@ -265,8 +279,12 @@ inline const std::vector<triangle<VB>>& aabb<VB>::get_triangles() const {
 
 template <typename VB>
 inline bool aabb<VB>::aabb_test(const ray& ray) const {
-    // TODO Lab: 2.05 Implement `aabb` class
-    return false;
+    float3 inv_ray_direction = float3(1) / ray.direction;
+    float3 t0 = (aabb_max - ray.position) * inv_ray_direction;
+    float3 t1 = (aabb_min - ray.position) * inv_ray_direction;
+    float3 tmax = linalg::max(t0, t1);
+    float3 tmin = linalg::min(t0, t1);
+    return linalg::maxelem(tmin) <= linalg::minelem(tmax);
 }
 
 } // namespace cg::renderer

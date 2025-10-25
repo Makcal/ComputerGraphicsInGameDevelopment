@@ -1,11 +1,12 @@
 #include "raytracer_renderer.h"
 
-#include "linalg.h"
 #include "renderer/raytracer/raytracer.h"
 #include "resource.h"
 #include "settings.h"
 #include "utils/resource_utils.h"
 #include "utils/timer.h"
+
+#include "linalg.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -111,9 +112,6 @@ void ray_tracing_renderer::render() {
     }
 
     utils::save_resource(*render_target, settings->result_path);
-    // TODO Lab: 2.04 Define `any_hit_shader` and `miss_shader` for `shadow_raytracer`
-    // TODO Lab: 2.04 Adjust `closest_hit_shader` of `raytracer` to cast shadows rays and to ignore occluded lights
-    // TODO Lab: 2.05 Adjust `ray_tracing_renderer` class to build the acceleration structure
     // TODO Lab: 2.06 (Bonus) Adjust `closest_hit_shader` for Monte-Carlo light tracing
 }
 
