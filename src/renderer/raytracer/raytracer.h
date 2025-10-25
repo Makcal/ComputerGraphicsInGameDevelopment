@@ -2,6 +2,7 @@
 
 #include "resource.h"
 
+#include <iostream>
 #include <linalg.h>
 #if __has_include(<omp.h>)
 #include <omp.h>
@@ -101,7 +102,7 @@ class raytracer {
 
     payload intersection_shader(const triangle<VB>& triangle, const ray& ray) const;
 
-    float2 get_jitter(int frame_id);
+    float2 get_jitter(std::size_t frame_id);
 
   protected:
     // NOLINTBEGIN(*non-private*)
@@ -135,17 +136,18 @@ inline raytracer<VB, RT>::raytracer(
     std::vector<std::shared_ptr<cg::resource<VB>>> in_vertex_buffers,
     std::vector<std::shared_ptr<cg::resource<std::size_t>>> in_index_buffers,
     std::vector<aabb<VB>> in_acceleration_structures)
-    : width{width}, height{height}, miss_shader{std::move(miss_shader)},
-      closest_hit_shader{std::move(closest_hit_shader)}, any_hit_shader{std::move(any_hit_shader)},
-      render_target{std::move(in_render_target)}, vertex_buffers{std::move(in_vertex_buffers)},
-      index_buffers{std::move(in_index_buffers)}, acceleration_structures{std::move(in_acceleration_structures)} {};
+    : width{width}, height{height}, history{std::make_shared<resource<float3>>(width, height)},
+      miss_shader{std::move(miss_shader)}, closest_hit_shader{std::move(closest_hit_shader)},
+      any_hit_shader{std::move(any_hit_shader)}, render_target{std::move(in_render_target)},
+      vertex_buffers{std::move(in_vertex_buffers)}, index_buffers{std::move(in_index_buffers)},
+      acceleration_structures{std::move(in_acceleration_structures)} {};
 
 template <typename VB, typename RT>
 inline void raytracer<VB, RT>::clear_render_target(const RT& in_clear_value) {
     for (std::size_t i = 0; i < render_target->count(); i++) {
         render_target->item(i) = in_clear_value;
+        history->item(i) = float3{0.F};
     }
-    // TODO Lab: 2.06 Add `history` resource in `raytracer` class
 }
 
 template <typename VB, typename RT>
@@ -170,24 +172,31 @@ inline void raytracer<VB, RT>::ray_generation(const float3 position,
                                               const float3 right,
                                               const float3 up,
                                               const std::size_t depth,
-                                              const std::size_t /*accumulation_num*/) {
+                                              const std::size_t accumulation_num) {
+    const float frame_weight = 1 / static_cast<float>(accumulation_num);
+    for (std::size_t frame_id = 0; frame_id < accumulation_num; frame_id++) {
+        std::cout << "Tracing frame #" << frame_id + 1 << '/' << accumulation_num << '\n';
+        const float2 jitter = get_jitter(frame_id);
 
-#pragma omp parallel for shared(depth, position, direction, right, up) default(none)
-    for (std::size_t x = 0; x < width; x++) {
-        for (std::size_t y = 0; y < height; y++) {
-            float u = (2 * static_cast<float>(x) / static_cast<float>(width - 1)) - 1;
-            float v = (2 * static_cast<float>(y) / static_cast<float>(height - 1)) - 1;
-            u *= static_cast<float>(width) / static_cast<float>(height);
-            float3 ray_direction = direction + u * right - v * up;
+#pragma omp parallel for default(shared) // NOLINT(*use-default-none)
+        for (std::size_t x = 0; x < width; x++) {
+            for (std::size_t y = 0; y < height; y++) {
+                float u = ((2 * static_cast<float>(x) + jitter.x) / static_cast<float>(width - 1)) - 1;
+                float v = ((2 * static_cast<float>(y) + jitter.y) / static_cast<float>(height - 1)) - 1;
+                u *= static_cast<float>(width) / static_cast<float>(height);
+                float3 ray_direction = direction + u * right - v * up;
 
-            ray ray{position, ray_direction};
+                ray ray{position, ray_direction};
+                payload payload = trace_ray(ray, depth);
 
-            payload payload = trace_ray(ray, depth);
+                float3& history_pixel = history->item(x, y);
+                history_pixel += payload.color.to_float3() * frame_weight;
 
-            render_target->item(x, y) = RT::from_color(payload.color);
+                if (frame_id + 1 == accumulation_num)
+                    render_target->item(x, y) = RT::from_float3(history_pixel);
+            }
         }
     }
-    // TODO Lab: 2.06 Implement TAA in `ray_generation` method of `raytracer` class
 }
 
 template <typename VB, typename RT>
@@ -252,9 +261,27 @@ inline payload raytracer<VB, RT>::intersection_shader(const triangle<VB>& triang
 }
 
 template <typename VB, typename RT>
-float2 raytracer<VB, RT>::get_jitter(int /*frame_id*/) {
-    // TODO Lab: 2.06 Implement `get_jitter` method of `raytracer` class
-    return {};
+float2 raytracer<VB, RT>::get_jitter(std::size_t frame_id) {
+    float2 result{0, 0};
+    const int base_x = 2;
+    std::size_t index = frame_id + 1;
+    float inv_base = 1.F / base_x;
+    float fraction = inv_base;
+    while (index > 0) {
+        result.x += static_cast<float>(index % base_x) * fraction;
+        index /= base_x;
+        fraction += inv_base;
+    }
+    const int base_y = 3;
+    index = frame_id + 1;
+    inv_base = 1.F / base_y;
+    fraction = inv_base;
+    while (index > 0) {
+        result.y += static_cast<float>(index % base_y) * fraction;
+        index /= base_y;
+        fraction += inv_base;
+    }
+    return result - 1.F / 2;
 }
 
 template <typename VB>
