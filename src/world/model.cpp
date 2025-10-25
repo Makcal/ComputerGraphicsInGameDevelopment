@@ -164,7 +164,3 @@ const std::vector<std::shared_ptr<cg::resource<std::size_t>>>& cg::world::model:
 const std::vector<std::filesystem::path>& cg::world::model::get_per_shape_texture_files() const {
     return textures;
 }
-
-constexpr float4x4 cg::world::model::get_world_matrix() {
-    return float4x4{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
-}

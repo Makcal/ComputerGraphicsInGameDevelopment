@@ -179,8 +179,8 @@ inline void raytracer<VB, RT>::ray_generation(const float3 position,
         const float2 jitter = get_jitter(frame_id);
 
 #pragma omp parallel for default(shared) // NOLINT(*use-default-none)
-        for (std::size_t x = 0; x < width; x++) {
-            for (std::size_t y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
                 float u = ((2 * static_cast<float>(x) + jitter.x) / static_cast<float>(width - 1)) - 1;
                 float v = ((2 * static_cast<float>(y) + jitter.y) / static_cast<float>(height - 1)) - 1;
                 u *= static_cast<float>(width) / static_cast<float>(height);

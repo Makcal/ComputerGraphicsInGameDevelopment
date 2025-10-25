@@ -114,7 +114,7 @@ void rasterizer<VB, RT>::draw(std::size_t num_vertices, std::size_t vertex_offse
         int2 max_vertex = linalg::max(vertex_a, linalg::max(vertex_b, vertex_c));
         max_vertex = linalg::clamp(max_vertex, min_border, max_border);
 
-        float edge = edge_function(vertex_a, vertex_b, vertex_c);
+        auto edge = static_cast<float>(edge_function(vertex_a, vertex_b, vertex_c));
 
         for (int x = min_vertex.x; x < max_vertex.x; ++x) {
             for (int y = min_vertex.y; y < max_vertex.y; ++y) {

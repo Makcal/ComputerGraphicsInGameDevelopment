@@ -43,4 +43,9 @@ class model {
                       const std::vector<tinyobj::material_t>& materials,
                       const std::filesystem::path& base_folder);
 };
+
+constexpr float4x4 model::get_world_matrix() {
+    return float4x4{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+}
+
 } // namespace cg::world
