@@ -239,7 +239,7 @@ inline payload raytracer<VB, RT>::intersection_shader(const triangle<VB>& triang
     float3 pvec = cross(ray.direction, triangle.ca);
     float det = dot(triangle.ba, pvec);
 
-    static constexpr float kPrecision = 1e-8;
+    static constexpr float kPrecision = 1e-8F;
     if (-kPrecision < det && det < kPrecision)
         return payload;
 
