@@ -23,46 +23,17 @@ constexpr auto miss_shader = [](const ray& ray) {
     return payload;
 };
 
-auto make_closest_hit_shader(const std::vector<light>& lights) {
-    return [&lights](const ray& ray, payload& payload, const triangle<vertex>& triangle, std::size_t /*depth*/) {
-        float3 position = ray.position + payload.t * ray.direction;
-        float3 normal = linalg::normalize(payload.bary.x * triangle.na + payload.bary.y * triangle.nb +
-                                          payload.bary.z * triangle.nc);
+constexpr auto shadow_miss_shader = [](const ray& /*ray*/) {
+    payload payload{};
+    payload.t = -1;
+    return payload;
+};
 
-        float3 result_color = triangle.emissive;
-
-        for (const light& light : lights) {
-            cg::renderer::ray to_light{position, light.position - position};
-            result_color += triangle.diffuse * light.color * std::max(linalg::dot(normal, to_light.direction), 0.F);
-        }
-
-        payload.color = color::from_float3(result_color);
-        return payload;
-    };
-}
-
-// constexpr auto any_hit_shader = [](const ray& /*ray*/, payload& payload, const triangle<vertex>& triangle) {};
-constexpr auto any_hit_shader = nullptr;
+constexpr auto shadow_any_hit_shader = [](const ray& /*ray*/, payload& payload, const triangle<vertex>& /*triangle*/) {
+    return payload;
+};
 
 } // namespace
-
-struct RayTracerInitializer {
-    using RayTracer = cg::renderer::raytracer<cg::vertex, cg::unsigned_color>;
-
-    ray_tracing_renderer& renderer; // NOLINT(*ref-data*)
-
-    operator RayTracer() { // NOLINT(*explicit*)
-        return {renderer.settings->width,
-                renderer.settings->height,
-                miss_shader,
-                make_closest_hit_shader(renderer.lights),
-                any_hit_shader,
-                renderer.render_target,
-                renderer.model->get_vertex_buffers(),
-                renderer.model->get_index_buffers(),
-                {}};
-    }
-};
 
 ray_tracing_renderer::ray_tracing_renderer(std::shared_ptr<cg::settings> settings)
     : renderer{std::move(settings)}, render_target{std::make_shared<cg::resource<cg::unsigned_color>>(
@@ -72,12 +43,51 @@ void ray_tracing_renderer::init() {
     renderer::load_model();
     renderer::load_camera();
 
-    raytracer = std::make_shared<RayTracerInitializer::RayTracer>(RayTracerInitializer{*this});
+    auto closest_hit_shader = [&](const ray& ray,
+                                  payload& payload,
+                                  const triangle<vertex>& triangle,
+                                  std::size_t /*depth*/) {
+        float3 position = ray.position + payload.t * ray.direction;
+        float3 normal = linalg::normalize(payload.bary.x * triangle.na + payload.bary.y * triangle.nb +
+                                          payload.bary.z * triangle.nc);
+
+        float3 result_color = triangle.emissive;
+
+        for (const light& light : lights) {
+            cg::renderer::ray to_light{position, light.position - position};
+            auto shadow_payload = shadow_raytracer->trace_ray(to_light, 1, linalg::length(light.position - position));
+            if (shadow_payload.t < 0) {
+                result_color += triangle.diffuse * light.color * std::max(linalg::dot(normal, to_light.direction), 0.F);
+            }
+        }
+
+        payload.color = color::from_float3(result_color);
+        return payload;
+    };
 
     static constexpr float3 light_pos = float3{0, 1.58F, -0.03F};
     static constexpr float3 light_dir = float3{0.78F, 0.78F, 0.78F};
     lights.push_back({light_pos, light_dir});
-    // TODO Lab: 2.04 Initialize `shadow_raytracer` in `ray_tracing_renderer`
+
+    using RayTracer = cg::renderer::raytracer<cg::vertex, cg::unsigned_color>;
+    raytracer = std::make_shared<RayTracer>(RayTracer{settings->width,
+                                                      settings->height,
+                                                      miss_shader,
+                                                      closest_hit_shader,
+                                                      nullptr,
+                                                      render_target,
+                                                      model->get_vertex_buffers(),
+                                                      model->get_index_buffers(),
+                                                      {}});
+    shadow_raytracer = std::make_shared<RayTracer>(RayTracer{settings->width,
+                                                             settings->height,
+                                                             shadow_miss_shader,
+                                                             nullptr,
+                                                             shadow_any_hit_shader,
+                                                             render_target,
+                                                             model->get_vertex_buffers(),
+                                                             model->get_index_buffers(),
+                                                             {}});
 }
 
 void ray_tracing_renderer::destroy() {}
@@ -87,6 +97,7 @@ void ray_tracing_renderer::update() {}
 void ray_tracing_renderer::render() {
     raytracer->clear_render_target({0, 0, 0});
     raytracer->build_acceleration_structure();
+    shadow_raytracer->build_acceleration_structure();
 
     {
         utils::timer timer{"Ray generation"};
