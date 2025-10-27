@@ -19,10 +19,10 @@ namespace cg::renderer {
 
 namespace {
 
-constexpr auto miss_shader = [](const ray& /*ray*/) {
+constexpr auto miss_shader = [](const ray& ray) {
     payload payload{};
-    payload.color = {0, 0, 0};
-    // payload.color = {0, 0, (ray.direction.y + 1) / static_cast<float>(2)};
+    // payload.color = {0, 0, 0}; // Monte-Carlo
+    payload.color = {0, 0, (ray.direction.y + 1) / static_cast<float>(2)};
     return payload;
 };
 
@@ -51,30 +51,32 @@ void ray_tracing_renderer::init() {
     auto closest_hit_shader = [&](const ray& ray,
                                   payload& payload,
                                   const triangle<vertex>& triangle,
-                                  std::size_t depth) {
+                                  std::size_t /*depth*/) {
         float3 position = ray.position + payload.t * ray.direction;
         float3 normal = linalg::normalize(payload.bary.x * triangle.na + payload.bary.y * triangle.nb +
                                           payload.bary.z * triangle.nc);
 
         float3 result_color = triangle.emissive;
-        std::uniform_real_distribution<float> uniform{};
-        float3 random_direction{uniform(random), uniform(random), uniform(random)};
-        if (linalg::dot(normal, random_direction) < 0) {
-            random_direction = -random_direction;
-        }
 
-        cg::renderer::ray to_next_object{position, random_direction};
-        cg::renderer::payload next_payload = raytracer->trace_ray(to_next_object, depth);
-        result_color += triangle.diffuse * next_payload.color.to_float3() *
-                        std::max(linalg::dot(normal, to_next_object.direction), 0.F);
-
-        // for (const light& light : lights) {
-        //     cg::renderer::ray to_light{position, light.position - position};
-        //     auto shadow_payload = shadow_raytracer->trace_ray(to_light, 1, linalg::length(light.position - position));
-        //     if (shadow_payload.t < 0) {
-        //         result_color += triangle.diffuse * light.color * std::max(linalg::dot(normal, to_light.direction), 0.F);
-        //     }
+        // Monte-Carlo
+        // std::uniform_real_distribution<float> uniform{};
+        // float3 random_direction{uniform(random), uniform(random), uniform(random)};
+        // if (linalg::dot(normal, random_direction) < 0) {
+        //     random_direction = -random_direction;
         // }
+
+        // cg::renderer::ray to_next_object{position, random_direction};
+        // cg::renderer::payload next_payload = raytracer->trace_ray(to_next_object, depth);
+        // result_color += triangle.diffuse * next_payload.color.to_float3() *
+        //                 std::max(linalg::dot(normal, to_next_object.direction), 0.F);
+
+        for (const light& light : lights) {
+            cg::renderer::ray to_light{position, light.position - position};
+            auto shadow_payload = shadow_raytracer->trace_ray(to_light, 1, linalg::length(light.position - position));
+            if (shadow_payload.t < 0) {
+                result_color += triangle.diffuse * light.color * std::max(linalg::dot(normal, to_light.direction), 0.F);
+            }
+        }
 
         payload.color = color::from_float3(result_color);
         return payload;
