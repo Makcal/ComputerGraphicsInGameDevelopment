@@ -25,6 +25,8 @@ class resource {
     const T& item(std::size_t x, std::size_t y) const;
 
     [[nodiscard]] std::size_t count() const;
+    [[nodiscard]] std::size_t size() const;
+    [[nodiscard]] std::size_t size_bytes() const;
     [[nodiscard]] std::size_t get_stride() const;
 
   private:
@@ -102,6 +104,16 @@ inline const T& resource<T>::item(std::size_t x, std::size_t y) const {
 template <typename T>
 inline std::size_t resource<T>::count() const {
     return data.size();
+}
+
+template <typename T> 
+inline std::size_t resource<T>::size() const {
+    return data.size();
+}
+
+template <typename T> 
+inline std::size_t resource<T>::size_bytes() const {
+    return data.size() * sizeof(T);
 }
 
 template <typename T>

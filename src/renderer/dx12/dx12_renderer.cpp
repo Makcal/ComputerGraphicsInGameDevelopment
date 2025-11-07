@@ -73,7 +73,7 @@ void cg::renderer::dx12_renderer::create_direct_command_queue() {
 
 void cg::renderer::dx12_renderer::create_swap_chain(Microsoft::WRL::ComPtr<IDXGIFactory4>& dxgi_factory) {
     DXGI_SWAP_CHAIN_DESC1 desc{};
-    desc.BufferCount = frame_number; 
+    desc.BufferCount = frame_number;
     desc.Height = static_cast<UINT>(settings->height);
     desc.Width = static_cast<UINT>(settings->width);
     desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -143,7 +143,17 @@ void cg::renderer::dx12_renderer::create_pso() {
 void cg::renderer::dx12_renderer::create_resource_on_upload_heap(Microsoft::WRL::ComPtr<ID3D12Resource>& resource,
                                                                  UINT size,
                                                                  const std::wstring& name) {
-    // TODO Lab: 3.03 Implement resource creation on upload heap
+    CD3DX12_HEAP_PROPERTIES heap_properties{D3D12_HEAP_TYPE_UPLOAD};
+    CD3DX12_RESOURCE_DESC resource_desc = CD3DX12_RESOURCE_DESC::Buffer(size);
+    THROW_IF_FAILED(device->CreateCommittedResource(&heap_properties,
+                                                    D3D12_HEAP_FLAG_NONE,
+                                                    &resource_desc,
+                                                    D3D12_RESOURCE_STATE_GENERIC_READ,
+                                                    nullptr,
+                                                    IID_PPV_ARGS(&resource)));
+    if (!name.empty()) {
+        resource->SetName(name.c_str());
+    }
 }
 
 void cg::renderer::dx12_renderer::create_resource_on_default_heap(Microsoft::WRL::ComPtr<ID3D12Resource>& resource,
@@ -154,7 +164,12 @@ void cg::renderer::dx12_renderer::create_resource_on_default_heap(Microsoft::WRL
 void cg::renderer::dx12_renderer::copy_data(const void* buffer_data,
                                             UINT buffer_size,
                                             Microsoft::WRL::ComPtr<ID3D12Resource>& destination_resource) {
-    // TODO Lab: 3.03 Implement map, unmap, and copying data to the resource
+    UINT8* buffer_data_begin;
+    CD3DX12_RANGE read_range{0, 0};
+
+    THROW_IF_FAILED(destination_resource->Map(0, &read_range, reinterpret_cast<void**>(&buffer_data_begin)));
+    std::memcpy(buffer_data_begin, buffer_data, buffer_size);
+    destination_resource->Unmap(0, &read_range);
 }
 
 void cg::renderer::dx12_renderer::copy_data(const void* buffer_data,
@@ -194,9 +209,36 @@ void cg::renderer::dx12_renderer::load_assets() {
 
     // TODO Lab: 3.04 Create a descriptor heap for a constant buffer
 
-    // TODO Lab: 3.03 Allocate memory for vertex and index buffers
-    // TODO Lab: 3.03 Create committed resources for vertex, index and constant buffers on upload heap
-    // TODO Lab: 3.03 Copy resource data to suitable resources
+    const std::size_t shape_num = model->get_index_buffers().size();
+    assert(model->get_vertex_buffers().size() == shape_num);
+
+    vertex_buffers.resize(shape_num);
+    index_buffers.resize(shape_num);
+
+    for (std::size_t i = 0; i < shape_num; i++) {
+        // Vertex buffer
+        auto& vb = *model->get_vertex_buffers()[i];
+        const UINT vb_size = static_cast<UINT>(vb.size_bytes());
+        std::wstring vb_name = L"Vertex buffer ";
+        vb_name += std::to_wstring(i);
+        create_resource_on_upload_heap(vertex_buffers[i], vb_size, vb_name);
+        copy_data(vb.get_data(), vb_size, vertex_buffers[i]);
+
+        // Index buffer
+        auto& ib = *model->get_index_buffers()[i];
+        const UINT ib_size = static_cast<UINT>(ib.size_bytes());
+        std::wstring ib_name = L"Index buffer ";
+        ib_name += std::to_wstring(i);
+        create_resource_on_upload_heap(index_buffers[i], ib_size, ib_name);
+        copy_data(ib.get_data(), ib_size, index_buffers[i]);
+    }
+
+    create_resource_on_upload_heap(constant_buffer, sizeof(cb), L"Constant buffer");
+    copy_data(&cb, sizeof(cb), constant_buffer);
+    CD3DX12_RANGE read_range{0, 0};
+    std::printf("%p ", (void*)constant_buffer_data_begin);
+    THROW_IF_FAILED(constant_buffer->Map(0, &read_range, reinterpret_cast<void**>(&constant_buffer_data_begin)));
+
     // TODO Lab: 3.04 Create vertex buffer views
     // TODO Lab: 3.04 Create index buffer views
 
