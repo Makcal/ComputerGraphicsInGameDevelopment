@@ -1,12 +1,12 @@
 ColumnLimit: 120
-BreakTemplateDeclarations: Yes
+# BreakTemplateDeclarations: Yes
 IndentWidth: 4
 BinPackArguments: false
 BinPackParameters: false
 AllowShortFunctionsOnASingleLine: Empty
 InsertNewlineAtEOF: true
-KeepEmptyLines:
-  AtEndOfFile: true
+# KeepEmptyLines:
+#   AtEndOfFile: true
 
 Language: Cpp
 DerivePointerAlignment: false
