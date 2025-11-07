@@ -14,7 +14,11 @@
 cg::renderer::dx12_renderer::dx12_renderer(std::shared_ptr<cg::settings> settings) : renderer{std::move(settings)} {}
 
 void cg::renderer::dx12_renderer::init() {
-    // TODO Lab: 3.01 Add `model` and `camera` creation code into `init` method of `dx12_renderer` class
+    renderer::load_camera();
+    renderer::load_model();
+
+    view_port = CD3DX12_VIEWPORT{0.f, 0.f, static_cast<FLOAT>(settings->width), static_cast<FLOAT>(settings->height)};
+    scissor_rect = CD3DX12_RECT{0, 0.f, static_cast<LONG>(settings->width), static_cast<LONG>(settings->height)};
 }
 
 void cg::renderer::dx12_renderer::destroy() {
