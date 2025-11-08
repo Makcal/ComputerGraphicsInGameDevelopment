@@ -34,7 +34,14 @@ void cg::renderer::dx12_renderer::update() {
 }
 
 void cg::renderer::dx12_renderer::render() {
-    // TODO Lab: 3.06 Implement `render` method
+    populate_command_list();
+
+    ID3D12CommandList* cmd_lists[] = {command_list.Get()};
+    command_queue->ExecuteCommandLists(std::size(cmd_lists), cmd_lists);
+
+    THROW_IF_FAILED(swap_chain->Present(0, 0));
+
+    move_to_next_frame();
 }
 
 Microsoft::WRL::ComPtr<IDXGIFactory4> cg::renderer::dx12_renderer::get_dxgi_factory() {
@@ -108,11 +115,17 @@ void cg::renderer::dx12_renderer::create_render_target_views() {
 void cg::renderer::dx12_renderer::create_depth_buffer() {}
 
 void cg::renderer::dx12_renderer::create_command_allocators() {
-    // TODO Lab: 3.06 Create command allocators and a command list
+    for (ComPtr<ID3D12CommandAllocator>& cmd_alloc : command_allocators) {
+        THROW_IF_FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&cmd_alloc)));
+    }
 }
 
 void cg::renderer::dx12_renderer::create_command_list() {
-    // TODO Lab: 3.06 Create command allocators and a command list
+    THROW_IF_FAILED(device->CreateCommandList(0,
+                                              D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                              command_allocators[0].Get(),
+                                              pipeline_state.Get(),
+                                              IID_PPV_ARGS(&command_list)));
 }
 
 void cg::renderer::dx12_renderer::load_pipeline() {
@@ -168,7 +181,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> cg::renderer::dx12_renderer::compile_shader(con
 #ifdef DEBUG
     compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif // !DEBUG
-    
+
     HRESULT res = D3DCompileFromFile(get_shader_path().wstring().c_str(),
                                      nullptr,
                                      nullptr,
@@ -189,7 +202,7 @@ Microsoft::WRL::ComPtr<ID3DBlob> cg::renderer::dx12_renderer::compile_shader(con
 void cg::renderer::dx12_renderer::create_pso() {
     ComPtr<ID3DBlob> vertex_shader = compile_shader("VSMain", "vs_5_0");
     ComPtr<ID3DBlob> pixel_shader = compile_shader("PSMain", "ps_5_0");
-    
+
     D3D12_INPUT_ELEMENT_DESC input_descs[] = {
         {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
         {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
@@ -216,7 +229,7 @@ void cg::renderer::dx12_renderer::create_pso() {
     desc.NumRenderTargets = 1;
     desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
     desc.SampleDesc.Count = 1;
-    
+
     THROW_IF_FAILED(device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pipeline_state)));
 }
 
@@ -294,7 +307,8 @@ void cg::renderer::dx12_renderer::create_constant_buffer_view(const Microsoft::W
 void cg::renderer::dx12_renderer::load_assets() {
     create_root_signature(nullptr, 0);
     create_pso();
-    // TODO Lab: 3.06 Create command allocators and a command list
+    create_command_allocators();
+    create_command_list();
 
     cbv_srv_heap.create_heap(
         device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1, D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE);
@@ -341,7 +355,40 @@ void cg::renderer::dx12_renderer::load_assets() {
 }
 
 void cg::renderer::dx12_renderer::populate_command_list() {
-    // TODO Lab: 3.06 Implement `populate_command_list` method
+    // Reset
+    THROW_IF_FAILED(command_allocators[frame_index]->Reset());
+    THROW_IF_FAILED(command_list->Reset(command_allocators[frame_index].Get(), pipeline_state.Get()));
+
+    // Initial state
+    command_list->SetGraphicsRootSignature(root_signature.Get());
+    ID3D12DescriptorHeap* heap = cbv_srv_heap.get();
+    command_list->SetDescriptorHeaps(1, &heap);
+    command_list->SetGraphicsRootDescriptorTable(0, cbv_srv_heap.get_gpu_descriptor_handle());
+    command_list->RSSetScissorRects(1, &scissor_rect);
+    command_list->RSSetViewports(1, &view_port);
+
+    D3D12_RESOURCE_BARRIER begin_barriers[] = {CD3DX12_RESOURCE_BARRIER::Transition(
+        render_targets[frame_index].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET)};
+    command_list->ResourceBarrier(std::size(begin_barriers), begin_barriers);
+
+    // Drawing
+    D3D12_CPU_DESCRIPTOR_HANDLE rtv = rtv_heap.get_cpu_descriptor_handle(frame_index);
+    command_list->OMSetRenderTargets(1, &rtv, false, nullptr);
+    const float clear_color[] = {0, 0, 0, 1};
+    command_list->ClearRenderTargetView(rtv, clear_color, 0, nullptr);
+    command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    for (std::size_t s = 0; s < model->get_index_buffers().size(); s++) {
+        command_list->IASetVertexBuffers(0, 1, &vertex_buffer_views[s]);
+        command_list->IASetIndexBuffer(&index_buffer_views[s]);
+        command_list->DrawIndexedInstanced(static_cast<UINT>(model->get_index_buffers()[s]->size()), 1, 0, 0, 0);
+    }
+
+    D3D12_RESOURCE_BARRIER end_barriers[] = {CD3DX12_RESOURCE_BARRIER::Transition(
+        render_targets[frame_index].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT)};
+    command_list->ResourceBarrier(std::size(end_barriers), end_barriers);
+
+    THROW_IF_FAILED(command_list->Close());
 }
 
 void cg::renderer::dx12_renderer::move_to_next_frame() {
@@ -366,11 +413,13 @@ void cg::renderer::descriptor_heap::create_heap(Microsoft::WRL::ComPtr<ID3D12Dev
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE cg::renderer::descriptor_heap::get_cpu_descriptor_handle(UINT index) const {
-    return CD3DX12_CPU_DESCRIPTOR_HANDLE{heap->GetCPUDescriptorHandleForHeapStart(), static_cast<INT>(index), descriptor_size};
+    return CD3DX12_CPU_DESCRIPTOR_HANDLE{
+        heap->GetCPUDescriptorHandleForHeapStart(), static_cast<INT>(index), descriptor_size};
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE cg::renderer::descriptor_heap::get_gpu_descriptor_handle(UINT index) const {
-    return CD3DX12_GPU_DESCRIPTOR_HANDLE{heap->GetGPUDescriptorHandleForHeapStart(), static_cast<INT>(index), descriptor_size};
+    return CD3DX12_GPU_DESCRIPTOR_HANDLE{
+        heap->GetGPUDescriptorHandleForHeapStart(), static_cast<INT>(index), descriptor_size};
 }
 ID3D12DescriptorHeap* cg::renderer::descriptor_heap::get() const {
     return heap.Get();
