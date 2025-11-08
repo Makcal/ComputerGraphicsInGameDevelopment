@@ -111,7 +111,7 @@ void cg::renderer::dx12_renderer::create_render_target_views() {
     rtv_heap.create_heap(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, frame_number);
     for (UINT i = 0; i < frame_number; i++) {
         THROW_IF_FAILED(swap_chain->GetBuffer(i, IID_PPV_ARGS(&render_targets[i])));
-        device->CreateRenderTargetView(render_targets[i].Get(), nullptr, rtv_heap.get_cpu_descriptor_handle());
+        device->CreateRenderTargetView(render_targets[i].Get(), nullptr, rtv_heap.get_cpu_descriptor_handle(i));
         std::wstring name = L"Render target ";
         name += std::to_wstring(i);
         render_targets[i]->SetName(name.c_str());
@@ -163,7 +163,7 @@ void cg::renderer::dx12_renderer::create_root_signature(const D3D12_STATIC_SAMPL
     D3D12_ROOT_SIGNATURE_FLAGS flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC desc;
-    desc.Init_1_1(1, root_params, num_sampler_descriptors, sampler_descriptors);
+    desc.Init_1_1(1, root_params, num_sampler_descriptors, sampler_descriptors, flags);
 
     ComPtr<ID3D10Blob> signature, error;
     HRESULT res = D3DX12SerializeVersionedRootSignature(&desc, data.HighestVersion, &signature, &error);
@@ -296,7 +296,7 @@ cg::renderer::dx12_renderer::create_index_buffer_view(const Microsoft::WRL::ComP
     view.BufferLocation = index_buffer->GetGPUVirtualAddress();
     view.Format = DXGI_FORMAT_R32_UINT;
     view.SizeInBytes = index_buffer_size;
-    return D3D12_INDEX_BUFFER_VIEW{};
+    return view;
 }
 
 void cg::renderer::dx12_renderer::create_shader_resource_view(const Microsoft::WRL::ComPtr<ID3D12Resource>& texture,
@@ -349,7 +349,7 @@ void cg::renderer::dx12_renderer::load_assets() {
         index_buffer_views[i] = create_index_buffer_view(index_buffers[i], ib_size);
     }
 
-    create_resource_on_upload_heap(constant_buffer, sizeof(cb), L"Constant buffer");
+    create_resource_on_upload_heap(constant_buffer, 64*1024, L"Constant buffer");
     copy_data(&cb, sizeof(cb), constant_buffer);
     CD3DX12_RANGE read_range{0, 0};
     THROW_IF_FAILED(constant_buffer->Map(0, &read_range, reinterpret_cast<void**>(&constant_buffer_data_begin)));
