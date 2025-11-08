@@ -7,6 +7,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project("Computer graphics in Game development")
 
+find_package(OpenMP REQUIRED)
+
 set(INCLUDE
         libs/stb
         libs/tinyobjloader
@@ -26,7 +28,10 @@ if(MSVC)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif()
 
-find_package(OpenMP REQUIRED)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_definitions(DEBUG)
+endif()
 
 add_executable(Rasterization 
     src/main.cpp 
