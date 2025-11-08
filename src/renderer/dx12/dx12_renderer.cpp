@@ -30,7 +30,13 @@ void cg::renderer::dx12_renderer::destroy() {
 }
 
 void cg::renderer::dx12_renderer::update() {
-    // TODO Lab: 3.08 Implement `update` method of `dx12_renderer`
+    auto now = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<float> duration = now - current_time;
+    frame_duration = duration.count();
+    current_time = now;
+
+    cb.mwpMatrix = camera->get_dxm_mvp_matrix();
+    std::memcpy(constant_buffer_data_begin, &cb, sizeof(cb));
 }
 
 void cg::renderer::dx12_renderer::render() {
@@ -257,10 +263,10 @@ void cg::renderer::dx12_renderer::create_resource_on_default_heap(Microsoft::WRL
 void cg::renderer::dx12_renderer::copy_data(const void* buffer_data,
                                             UINT buffer_size,
                                             Microsoft::WRL::ComPtr<ID3D12Resource>& destination_resource) {
-    UINT8* buffer_data_begin;
+    void* buffer_data_begin;
     CD3DX12_RANGE read_range{0, 0};
 
-    THROW_IF_FAILED(destination_resource->Map(0, &read_range, reinterpret_cast<void**>(&buffer_data_begin)));
+    THROW_IF_FAILED(destination_resource->Map(0, &read_range, static_cast<void**>(&buffer_data_begin)));
     std::memcpy(buffer_data_begin, buffer_data, buffer_size);
     destination_resource->Unmap(0, &read_range);
 }
@@ -346,7 +352,6 @@ void cg::renderer::dx12_renderer::load_assets() {
     create_resource_on_upload_heap(constant_buffer, sizeof(cb), L"Constant buffer");
     copy_data(&cb, sizeof(cb), constant_buffer);
     CD3DX12_RANGE read_range{0, 0};
-    std::printf("%p ", (void*)constant_buffer_data_begin);
     THROW_IF_FAILED(constant_buffer->Map(0, &read_range, reinterpret_cast<void**>(&constant_buffer_data_begin)));
 
     create_constant_buffer_view(constant_buffer, cbv_srv_heap.get_cpu_descriptor_handle());
