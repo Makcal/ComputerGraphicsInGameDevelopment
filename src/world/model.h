@@ -19,7 +19,7 @@ class model {
     void load_obj(const std::filesystem::path& model_path);
 
     [[nodiscard]] const std::vector<std::shared_ptr<cg::resource<cg::vertex>>>& get_vertex_buffers() const;
-    [[nodiscard]] const std::vector<std::shared_ptr<cg::resource<std::uint32_t>>>& get_index_buffers() const;
+    [[nodiscard]] const std::vector<std::shared_ptr<cg::resource<std::size_t>>>& get_index_buffers() const;
     [[nodiscard]] const std::vector<std::filesystem::path>& get_per_shape_texture_files() const;
 
     [[nodiscard]] static constexpr float4x4 get_world_matrix();
@@ -27,7 +27,7 @@ class model {
   protected:
     // NOLINTBEGIN(*-non-private-*)
     std::vector<std::shared_ptr<cg::resource<cg::vertex>>> vertex_buffers;
-    std::vector<std::shared_ptr<cg::resource<std::uint32_t>>> index_buffers;
+    std::vector<std::shared_ptr<cg::resource<std::size_t>>> index_buffers;
     std::vector<std::filesystem::path> textures;
     // NOLINTEND(*-non-private-*)
 

@@ -53,7 +53,7 @@ void model::allocate_buffers(const std::vector<tinyobj::shape_t>& shapes) {
             index_offset += fv;
         }
         vertex_buffers.push_back(std::make_shared<resource<vertex>>(vertex_buffer_size));
-        index_buffers.push_back(std::make_shared<resource<std::uint32_t>>(index_buffer_size));
+        index_buffers.push_back(std::make_shared<resource<std::size_t>>(index_buffer_size));
     }
     textures.resize(shapes.size());
 }
@@ -113,7 +113,7 @@ void model::fill_buffers(const std::vector<tinyobj::shape_t>& shapes,
     for (std::size_t shape_i = 0; shape_i < shapes.size(); ++shape_i) {
         const tinyobj::shape_t& shape = shapes[shape_i];
         std::shared_ptr<cg::resource<vertex>>& vertex_buffer = vertex_buffers[shape_i];
-        std::shared_ptr<cg::resource<std::uint32_t>>& index_buffer = index_buffers[shape_i];
+        std::shared_ptr<cg::resource<std::size_t>>& index_buffer = index_buffers[shape_i];
         const tinyobj::mesh_t& mesh = shape.mesh;
 
         std::size_t index_offset = 0;
@@ -157,7 +157,7 @@ const std::vector<std::shared_ptr<cg::resource<cg::vertex>>>& cg::world::model::
     return vertex_buffers;
 }
 
-const std::vector<std::shared_ptr<cg::resource<std::uint32_t>>>& cg::world::model::get_index_buffers() const {
+const std::vector<std::shared_ptr<cg::resource<std::size_t>>>& cg::world::model::get_index_buffers() const {
     return index_buffers;
 }
 
