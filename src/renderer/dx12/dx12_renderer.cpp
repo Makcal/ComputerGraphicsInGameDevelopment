@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <memory>
 #include <utility>
+#include <format>
 
 cg::renderer::dx12_renderer::dx12_renderer(std::shared_ptr<cg::settings> settings) : renderer{std::move(settings)} {}
 
