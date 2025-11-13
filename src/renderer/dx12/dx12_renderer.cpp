@@ -240,7 +240,7 @@ void cg::renderer::dx12_renderer::create_pso() {
 }
 
 void cg::renderer::dx12_renderer::create_resource_on_upload_heap(Microsoft::WRL::ComPtr<ID3D12Resource>& resource,
-                                                                 UINT size,
+                                                                 std::size_t size,
                                                                  const std::wstring& name) {
     CD3DX12_HEAP_PROPERTIES heap_properties{D3D12_HEAP_TYPE_UPLOAD};
     CD3DX12_RESOURCE_DESC resource_desc = CD3DX12_RESOURCE_DESC::Buffer(size);
@@ -261,18 +261,35 @@ void cg::renderer::dx12_renderer::create_resource_on_default_heap(Microsoft::WRL
                                                                   D3D12_RESOURCE_DESC* resource_descriptor) {}
 
 void cg::renderer::dx12_renderer::copy_data(const void* buffer_data,
-                                            UINT buffer_size,
+                                            std::size_t buffer_size,
                                             Microsoft::WRL::ComPtr<ID3D12Resource>& destination_resource) {
     void* buffer_data_begin;
-    CD3DX12_RANGE read_range{0, 0};
+    CD3DX12_RANGE read_range{};
 
-    THROW_IF_FAILED(destination_resource->Map(0, &read_range, static_cast<void**>(&buffer_data_begin)));
+    THROW_IF_FAILED(destination_resource->Map(0, &read_range, &buffer_data_begin));
     std::memcpy(buffer_data_begin, buffer_data, buffer_size);
     destination_resource->Unmap(0, &read_range);
 }
 
+namespace {
+
+void copy_index_buffer(const std::size_t* buffer_data,
+                       std::size_t buffer_size,
+                       Microsoft::WRL::ComPtr<ID3D12Resource>& destination_resource) {
+    void* mapped_data_begin;
+    CD3DX12_RANGE read_range{};
+
+    THROW_IF_FAILED(destination_resource->Map(0, &read_range, &mapped_data_begin));
+    std::uint32_t* mapped_data = static_cast<std::uint32_t*>(mapped_data_begin); // because of DXGI_FORMAT_R32
+    for (std::size_t i = 0; i < buffer_size; i++)
+        mapped_data[i] = buffer_data[i];
+    destination_resource->Unmap(0, &read_range);
+}
+
+} // namespace
+
 void cg::renderer::dx12_renderer::copy_data(const void* buffer_data,
-                                            const UINT buffer_size,
+                                            const std::size_t buffer_size,
                                             Microsoft::WRL::ComPtr<ID3D12Resource>& destination_resource,
                                             Microsoft::WRL::ComPtr<ID3D12Resource>& intermediate_resource,
                                             D3D12_RESOURCE_STATES state_after,
@@ -330,7 +347,7 @@ void cg::renderer::dx12_renderer::load_assets() {
     for (std::size_t i = 0; i < shape_num; i++) {
         // Vertex buffer
         auto& vb = *model->get_vertex_buffers()[i];
-        const UINT vb_size = static_cast<UINT>(vb.size_bytes());
+        const std::size_t vb_size = vb.size_bytes();
         std::wstring vb_name = L"Vertex buffer ";
         vb_name += std::to_wstring(i);
         create_resource_on_upload_heap(vertex_buffers[i], vb_size, vb_name);
@@ -340,11 +357,11 @@ void cg::renderer::dx12_renderer::load_assets() {
 
         // Index buffer
         auto& ib = *model->get_index_buffers()[i];
-        const UINT ib_size = static_cast<UINT>(ib.size_bytes());
+        const std::size_t ib_size = ib.size_bytes();
         std::wstring ib_name = L"Index buffer ";
         ib_name += std::to_wstring(i);
         create_resource_on_upload_heap(index_buffers[i], ib_size, ib_name);
-        copy_data(ib.get_data(), ib_size, index_buffers[i]);
+        copy_index_buffer(ib.get_data(), ib_size, index_buffers[i]);
 
         index_buffer_views[i] = create_index_buffer_view(index_buffers[i], ib_size);
     }

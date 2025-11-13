@@ -121,8 +121,8 @@ class dx12_renderer : public renderer {
     void create_swap_chain(ComPtr<IDXGIFactory4>& dxgi_factory);
 
     void
-    create_resource_on_upload_heap(ComPtr<ID3D12Resource>& resource, UINT size = 0, const std::wstring& name = L"");
-    static void copy_data(const void* buffer_data, UINT buffer_size, ComPtr<ID3D12Resource>& destination_resource);
+    create_resource_on_upload_heap(ComPtr<ID3D12Resource>& resource, std::size_t size = 0, const std::wstring& name = L"");
+    static void copy_data(const void* buffer_data, std::size_t buffer_size, ComPtr<ID3D12Resource>& destination_resource);
 
     void create_render_target_views();
     static D3D12_VERTEX_BUFFER_VIEW create_vertex_buffer_view(const ComPtr<ID3D12Resource>& vertex_buffer,
@@ -149,7 +149,7 @@ class dx12_renderer : public renderer {
                                          D3D12_RESOURCE_DESC* resource_descriptor = nullptr);
 
     void copy_data(const void* buffer_data,
-                   UINT buffer_size,
+                   std::size_t buffer_size,
                    ComPtr<ID3D12Resource>& destination_resource,
                    ComPtr<ID3D12Resource>& intermediate_resource,
                    D3D12_RESOURCE_STATES state_after,
