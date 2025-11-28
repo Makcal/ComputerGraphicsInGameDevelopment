@@ -120,9 +120,11 @@ class dx12_renderer : public renderer {
     void create_direct_command_queue();
     void create_swap_chain(ComPtr<IDXGIFactory4>& dxgi_factory);
 
-    void
-    create_resource_on_upload_heap(ComPtr<ID3D12Resource>& resource, std::size_t size = 0, const std::wstring& name = L"");
-    static void copy_data(const void* buffer_data, std::size_t buffer_size, ComPtr<ID3D12Resource>& destination_resource);
+    void create_resource_on_upload_heap(ComPtr<ID3D12Resource>& resource,
+                                        std::size_t size = 0,
+                                        const std::wstring& name = L"");
+    static void
+    copy_data(const void* buffer_data, std::size_t buffer_size, ComPtr<ID3D12Resource>& destination_resource);
 
     void create_render_target_views();
     static D3D12_VERTEX_BUFFER_VIEW create_vertex_buffer_view(const ComPtr<ID3D12Resource>& vertex_buffer,
@@ -155,6 +157,14 @@ class dx12_renderer : public renderer {
                    D3D12_RESOURCE_STATES state_after,
                    int row_pitch = 0,
                    int slice_pitch = 0);
+
+    void copy_index_data(const std::size_t* index_buffer_data,
+                         std::size_t index_buffer_size,
+                         ComPtr<ID3D12Resource>& destination_resource,
+                         ComPtr<ID3D12Resource>& intermediate_resource,
+                         D3D12_RESOURCE_STATES state_after,
+                         int row_pitch = 0,
+                         int slice_pitch = 0);
 
     void create_shader_resource_view(const ComPtr<ID3D12Resource>& texture, D3D12_CPU_DESCRIPTOR_HANDLE cpu_handler);
 };
